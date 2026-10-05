@@ -34,6 +34,7 @@ const snap: Snapshot = {
   warnings: [],
   freeThreshold: 3,
   overloadedAt: 5,
+  writesEnabled: false,
 };
 
 test('scope: leader sees both led departments only, with true workload totals', () => {

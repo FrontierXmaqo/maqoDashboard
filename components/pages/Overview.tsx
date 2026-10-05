@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useData } from '../DataProvider';
 import MyWork from './MyWork';
-import { DeptChips, Legend, LoadCell, Pill, Seg, SegBar, Stepper, TaskTable, Who, projectMeta, NotSet } from '../ui';
+import { DeptChips, Icon, Legend, LoadCell, Pill, Seg, SegBar, Stepper, TaskTable, Who, projectMeta, NotSet } from '../ui';
 import { dayToIso, fd, fdy, isoToDay, monthRange, people, plural, weekRange, weekday } from '../../lib/dates';
 import { STAGES, STATUS, personInDept, type Model, type StatusKey, type Tone } from '../../lib/model';
 import type { Stage } from '../../lib/types';
@@ -56,7 +56,8 @@ function AttentionCard({ M }: { M: Model }) {
 }
 
 function FreeCard({ M }: { M: Model }) {
-  const { open } = useData();
+  const { open, canCreate, openNew } = useData();
+  const canAssign = (dept: string | null) => canCreate && (M.viewer.role === 'ceo' || (dept != null && M.viewer.depts.includes(dept)));
   const free = M.sPeople.filter((p) => p.key === 'free').sort((a, b) => a.n - b.n || a.name.localeCompare(b.name));
   return (
     <section className="card" id="free" aria-labelledby="h-free">
@@ -69,7 +70,7 @@ function FreeCard({ M }: { M: Model }) {
       </div>
       <div className="tbl" style={{ maxHeight: 420, overflowY: 'auto' }}>
         <table>
-          <thead><tr><th>Employee</th><th>Department</th><th>Workload</th><th>Next due</th></tr></thead>
+          <thead><tr><th>Employee</th><th>Department</th><th>Workload</th><th>Next due</th><th /></tr></thead>
           <tbody>
             {free.length ? (
               free.map((p) => (
@@ -78,10 +79,17 @@ function FreeCard({ M }: { M: Model }) {
                   <td>{p.dept ?? <NotSet />}</td>
                   <td className="num">{p.n ? plural(p.n, 'open task') : 'No open tasks'}</td>
                   <td className={`num ${p.next?.dueCls ?? ''}`}>{p.next ? p.next.dueLabel : '—'}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    {canAssign(p.dept) && (
+                      <button type="button" className="btn sm outline" onClick={(e) => { e.stopPropagation(); openNew({ assignee: p.openId }); }}>
+                        <Icon n="plus" s={14} />Assign
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))
             ) : (
-              <tr><td colSpan={4} className="empty">Nobody is free right now.</td></tr>
+              <tr><td colSpan={5} className="empty">Nobody is free right now.</td></tr>
             )}
           </tbody>
         </table>
@@ -266,7 +274,7 @@ export default function Overview() {
 }
 
 function TeamOverview() {
-  const { M } = useData();
+  const { M, canCreate, openNew } = useData();
   const [range, setRange] = useState<Range>('week');
   const [from, setFrom] = useState(dayToIso(M.t0));
   const [to, setTo] = useState(dayToIso(M.t0 + 14));
@@ -284,7 +292,10 @@ function TeamOverview() {
           <h1 className="title">{M.viewer.role === 'ceo' ? 'Company overview' : `${M.viewer.depts.join(' + ') || 'Team'} overview`}</h1>
           <p className="muted">{weekday(M.t0)}, {fdy(M.t0)}</p>
         </div>
-        <Seg<Range> label="Date range" value={range} onChange={setRange} options={[['today', 'Today'], ['week', 'This week'], ['month', 'This month'], ['custom', 'Custom']]} />
+        <div className="row">
+          <Seg<Range> label="Date range" value={range} onChange={setRange} options={[['today', 'Today'], ['week', 'This week'], ['month', 'This month'], ['custom', 'Custom']]} />
+          {canCreate && <button type="button" className="btn primary" onClick={() => openNew()}><Icon n="plus" s={16} />Assign task</button>}
+        </div>
       </div>
       {range === 'custom' && (
         <div className="card" style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', padding: '12px 16px' }}>

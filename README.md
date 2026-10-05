@@ -8,9 +8,9 @@ Full brief: [docs/PROMPT.md](docs/PROMPT.md). Design reference:
 
 ## Status
 
-Phase 3: Lark sign-in and roles. Every page reads live Lark data, with "Not set" wherever
-a value is missing. Each viewer is signed in through Lark and sees only what their role
-allows; data is filtered on the server. No writes yet (Phase 4).
+Phase 4: leader writes, built and tested against a local mock only. Leaders and the CEO
+can create, assign and edit tasks; every write is checked on the server. Writes are OFF
+unless `LARK_WRITES_ENABLED=1`, and have not yet been run against any real Base.
 
 Local development without Lark access: `LARK_FIXTURES=1 npm run dev` loads sample data
 (never in production).
@@ -53,6 +53,22 @@ Dev sign-in (mock roles): `/dev-login` lets you sign in as a CEO, a leader of an
 departments, or an employee. It works in local development, and on Vercel preview
 deployments only when `DEV_LOGIN=1`. It is always off in production. A red DEV SIGN-IN
 badge shows while it's in use.
+
+## Editing tasks
+
+- Who: the CEO on any task; a leader on tasks whose departments include one they lead;
+  employees never (the API answers 403). Leaders assign Task Responsible only to people in
+  their departments.
+- What is written: `Task`, `Task Status` (exact option names only), `Task Responsible`,
+  `Task Support`, `Start date`, `Estimate Deadline`, `Priority`, `Progress notes`,
+  `Task summary`, and `Actual End Date` (set to now when a task becomes Completed).
+  People are written as `[{ "id": "<open_id>" }]`, dates as millisecond timestamps.
+- New tasks: the app also writes `Department`, once, at creation, using an option that
+  already exists in Lark (it never creates options). O&M tasks go to the O&M table, all
+  other departments to the PH table (`createFor` in `config/task-sources.ts`).
+- Never written: Department on existing tasks, the project link, or anything else.
+- After a write the server clears its cache, so the change shows on the next refresh.
+- Writes need the `bitable:app` scope and `LARK_WRITES_ENABLED=1`.
 
 ## Where things live
 

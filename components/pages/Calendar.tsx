@@ -9,7 +9,7 @@ import { prioMeta, type TaskX } from '../../lib/model';
 const evTone = (t: TaskX) => (t.overdue ? 'r' : t.done ? 'g' : t.stage === 'stalled' ? 'a' : 'b');
 
 export default function Calendar() {
-  const { M } = useData();
+  const { M, canCreate, openNew } = useData();
   const today = dayToIso(M.t0);
   const [month, setMonth] = useState(today.slice(0, 7));
   const [sel, setSel] = useState(today);
@@ -64,7 +64,10 @@ export default function Calendar() {
         {cells}
       </div>
       <section className="card">
-        <h2>{fdy(isoToDay(sel))}</h2>
+        <div className="spread">
+          <h2>{fdy(isoToDay(sel))}</h2>
+          {canCreate && <button type="button" className="btn sm outline" onClick={() => openNew({ due: sel })}><Icon n="plus" s={14} />Task on this day</button>}
+        </div>
         <TaskTable list={dayList} empty="Nothing due on this day." />
       </section>
     </>

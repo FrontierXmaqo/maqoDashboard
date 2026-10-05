@@ -7,6 +7,7 @@ import { fd, fdy, klDay, plural } from '../lib/dates';
 import { NOT_SET, STATUS, stageMeta, type TaskX } from '../lib/model';
 import type { PersonRef } from '../lib/types';
 import { LEADERS } from '../config/roles';
+import { TaskForm } from './TaskForm';
 
 export function LayerView() {
   const { layer, close } = useData();
@@ -15,6 +16,8 @@ export function LayerView() {
   if (layer.type === 'emp') inner = <EmployeeDrawer id={layer.id} />;
   if (layer.type === 'proj') inner = <ProjectDrawer id={layer.id} />;
   if (layer.type === 'task') inner = <TaskModal id={layer.id} />;
+  if (layer.type === 'edit') inner = <EditTask id={layer.id} />;
+  if (layer.type === 'new') inner = <TaskForm preset={layer.preset} />;
   return (
     <div className="overlay">
       <button type="button" className="scrim" onClick={close} aria-label="Close" tabIndex={-1} />
@@ -55,7 +58,7 @@ function TaskList({ list, empty, showBar }: { list: TaskX[]; empty: string; show
 }
 
 function EmployeeDrawer({ id }: { id: string }) {
-  const { M } = useData();
+  const { M, canCreate, openNew } = useData();
   const e = M.personById.get(id);
   if (!e) return null;
   const current = e.open.filter((t) => t.stage === 'ongoing' || t.stage === 'stalled').sort((a, b) => a.dd - b.dd);
@@ -100,6 +103,11 @@ function EmployeeDrawer({ id }: { id: string }) {
         <h3 style={{ fontSize: 13, fontWeight: 600 }}>Recently completed <span className="muted num" style={{ fontWeight: 400 }}>{done.length}</span></h3>
         <TaskList list={done.slice(0, 8)} empty="No completed tasks yet." />
       </div>
+      {canCreate && (M.viewer.role === 'ceo' || (e.dept != null && M.viewer.depts.includes(e.dept))) && (
+        <div className="row" style={{ marginTop: 'auto' }}>
+          <button type="button" className="btn primary" style={{ flexGrow: 1 }} onClick={() => openNew({ assignee: e.openId })}>Assign a task to {e.name.split(' ')[0]}</button>
+        </div>
+      )}
     </aside>
   );
 }
@@ -174,8 +182,14 @@ function People({ list }: { list: PersonRef[] }) {
   );
 }
 
-function TaskModal({ id }: { id: string }) {
+function EditTask({ id }: { id: string }) {
   const { M } = useData();
+  const t = M.tasks.find((x) => x.id === id);
+  return t ? <TaskForm task={t} /> : null;
+}
+
+function TaskModal({ id }: { id: string }) {
+  const { M, canEdit, open } = useData();
   const t = M.tasks.find((x) => x.id === id);
   if (!t) return null;
   const projs = t.projectIds.map((pid) => M.projectById.get(pid));
@@ -204,6 +218,11 @@ function TaskModal({ id }: { id: string }) {
         <dt>Progress notes</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{t.notes || <NotSet />}</dd>
         <dt>Lark table</dt><dd className="muted">{t.sourceLabel}</dd>
       </dl>
+      {canEdit(t) && (
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button type="button" className="btn primary" onClick={() => open('edit', t.id)}>Edit task</button>
+        </div>
+      )}
     </div>
   );
 }

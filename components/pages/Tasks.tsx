@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useData, useStored } from '../DataProvider';
-import { NotSet, PrioTag, Seg, Select, TaskTable, type SortKey } from '../ui';
+import { Icon, NotSet, PrioTag, Seg, Select, TaskTable, type SortKey } from '../ui';
 import { plural } from '../../lib/dates';
 import { NOT_SET, PRIO, prioMeta, STAGES, taskInDept, type Model, type TaskX } from '../../lib/model';
 
@@ -69,7 +69,7 @@ function BoardCard({ t }: { t: TaskX }) {
 }
 
 export default function Tasks() {
-  const { M } = useData();
+  const { M, canCreate, openNew } = useData();
   const sp = useSearchParams();
   const [f, setF] = useState<F>({ q: '', status: sp.get('status') ?? 'open', dept: sp.get('dept') ?? 'All', proj: 'all', emp: sp.get('emp') ?? 'all', prio: 'all' });
   const [sort, setSort] = useState<SortKey>('due');
@@ -114,7 +114,10 @@ export default function Tasks() {
           <h1 className="title">Tasks</h1>
           <p className="muted">{plural(view === 'board' ? M.sTasks.filter((t) => passes(t, f, false)).length : list.length, 'task')} shown</p>
         </div>
-        <Seg<'list' | 'board'> label="View" value={view} onChange={setView} options={[['list', 'List'], ['board', 'Board']]} />
+        <div className="row">
+          <Seg<'list' | 'board'> label="View" value={view} onChange={setView} options={[['list', 'List'], ['board', 'Board']]} />
+          {canCreate && <button type="button" className="btn primary" onClick={() => openNew(f.dept !== 'All' ? { department: f.dept } : {})}><Icon n="plus" s={16} />New task</button>}
+        </div>
       </div>
       <section className="card">
         <div className="row">

@@ -75,4 +75,6 @@ export type Snapshot = {
   warnings: string[];
   freeThreshold: number;
   overloadedAt: number;
+  /** Editing is switched on for this deployment (LARK_WRITES_ENABLED=1). */
+  writesEnabled: boolean;
 };

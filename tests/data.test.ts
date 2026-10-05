@@ -88,6 +88,7 @@ test('model: overdue, open counts, support excluded from workload', () => {
     warnings: [],
     freeThreshold: 3,
     overloadedAt: 5,
+    writesEnabled: false,
   };
   const m = build(snap, undefined, now);
   const t = (id: string) => m.tasks.find((x) => x.id === id)!;

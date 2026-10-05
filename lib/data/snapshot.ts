@@ -105,7 +105,13 @@ function emptySnapshot(warning: string): Snapshot {
     warnings: [warning],
     freeThreshold: freeThreshold(),
     overloadedAt: overloadedAt(),
+    writesEnabled: false,
   };
+}
+
+/** Writes are off unless explicitly switched on, so a deployment can never write by accident. */
+export function writesEnabled(): boolean {
+  return fixturesEnabled() || process.env.LARK_WRITES_ENABLED === '1';
 }
 
 export async function loadSnapshot(): Promise<Snapshot> {
@@ -173,5 +179,6 @@ export async function loadSnapshot(): Promise<Snapshot> {
     warnings,
     freeThreshold: freeThreshold(),
     overloadedAt: overloadedAt(),
+    writesEnabled: writesEnabled(),
   };
 }

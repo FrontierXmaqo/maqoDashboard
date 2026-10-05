@@ -57,9 +57,43 @@ const OM: LarkRecord[] = [
   { record_id: 'rec26', fields: { Task: t('Quarterly O&M visit'), 'Task Responsible': P.c, Department: ['O&M'], 'Task Status': 'Not yet started', 'Estimate Deadline': at(20) } },
 ];
 
+// Shared across module copies (pages and API routes) so local writes show up on refresh.
+const g = globalThis as typeof globalThis & { __maqoFixtures?: Record<string, LarkRecord[]> };
+g.__maqoFixtures ??= { tbllh9KcfhidHupv: PH, tblG3imQ2abeqfC0: OM, tbl5QmCHTiIgjUlE: PROJECTS };
+
 export function fixtureRecords(tableId: string): LarkRecord[] {
-  if (tableId === 'tbllh9KcfhidHupv') return PH;
-  if (tableId === 'tblG3imQ2abeqfC0') return OM;
-  if (tableId === 'tbl5QmCHTiIgjUlE') return PROJECTS;
-  return [];
+  return g.__maqoFixtures![tableId] ?? [];
+}
+
+// ---- Writes (local dev only): mutate the sample records in memory. ----
+
+const KNOWN_USERS = new Map(Object.values(P).map((list) => [list[0].id, list[0]]));
+
+function toStored(v: unknown): unknown {
+  if (Array.isArray(v) && v.every((x) => x && typeof x === 'object' && 'id' in x)) {
+    return v.map((x) => KNOWN_USERS.get((x as { id: string }).id) ?? { id: (x as { id: string }).id, name: (x as { id: string }).id, en_name: (x as { id: string }).id });
+  }
+  if (typeof v === 'string') return [{ type: 'text', text: v }];
+  return v;
+}
+
+const SELECTS = new Set(['Task Status', 'Priority']);
+
+export function fixtureWrite(tableId: string, recordId: string | null, fields: Record<string, unknown>): string {
+  const table = fixtureRecords(tableId);
+  let rec = recordId ? table.find((r) => r.record_id === recordId) : undefined;
+  if (recordId && !rec) throw new Error(`Record ${recordId} not found`);
+  if (!rec) {
+    rec = { record_id: `recNew${Date.now().toString(36)}`, fields: {} };
+    table.push(rec);
+  }
+  for (const [k, v] of Object.entries(fields)) {
+    if (v === null) delete rec.fields[k];
+    else rec.fields[k] = SELECTS.has(k) || Array.isArray(v) && v.every((x) => typeof x === 'string') ? v : toStored(v);
+  }
+  return rec.record_id;
+}
+
+export function fixtureFields(): { field_name: string; type: number; property?: { options: { name: string }[] } }[] {
+  return [{ field_name: 'Department', type: 4, property: { options: ['CEO Office', 'Residential', 'C&I', 'Marketing', 'O&M', 'Engineering', 'Finance', 'HR', 'Procurement/Warehouse & Logistics'].map((name) => ({ name })) } }];
 }

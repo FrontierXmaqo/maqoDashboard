@@ -3,8 +3,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { build, type Model, type Viewer } from '../lib/model';
 import type { PersonRef, Snapshot } from '../lib/types';
+import type { NewPreset } from './TaskForm';
+import { canEditTask, creatableDepartments } from '../lib/auth/permissions';
+import type { TaskX } from '../lib/model';
 
-export type Layer = { type: 'emp' | 'proj' | 'task'; id: string } | null;
+export type Layer = { type: 'emp' | 'proj' | 'task' | 'edit'; id: string } | { type: 'new'; id: ''; preset: NewPreset } | null;
 
 type Ctx = {
   snap: Snapshot;
@@ -14,7 +17,11 @@ type Ctx = {
   /** Signed in through dev mode with a mocked role. */
   dev: boolean;
   layer: Layer;
-  open: (type: NonNullable<Layer>['type'], id: string) => void;
+  open: (type: 'emp' | 'proj' | 'task' | 'edit', id: string) => void;
+  openNew: (preset?: NewPreset) => void;
+  /** UI hints only; the server checks every write again. */
+  canEdit: (t: TaskX) => boolean;
+  canCreate: boolean;
   close: () => void;
   toast: (msg: string) => void;
   toastMsg: string;
@@ -29,7 +36,10 @@ export function DataProvider({ snapshot, viewer, me, dev, children }: { snapshot
   const [toastMsg, setToastMsg] = useState('');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const open = useCallback((type: NonNullable<Layer>['type'], id: string) => setLayer({ type, id }), []);
+  const open = useCallback((type: 'emp' | 'proj' | 'task' | 'edit', id: string) => setLayer({ type, id }), []);
+  const openNew = useCallback((preset: NewPreset = {}) => setLayer({ type: 'new', id: '', preset }), []);
+  const canEdit = useCallback((t: TaskX) => snapshot.writesEnabled && canEditTask(viewer, t), [snapshot.writesEnabled, viewer]);
+  const canCreate = snapshot.writesEnabled && creatableDepartments(viewer).length > 0;
   const close = useCallback(() => setLayer(null), []);
   const toast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -47,7 +57,7 @@ export function DataProvider({ snapshot, viewer, me, dev, children }: { snapshot
     document.body.style.overflow = layer ? 'hidden' : '';
   }, [layer]);
 
-  const value = useMemo(() => ({ snap: snapshot, M, me, dev, layer, open, close, toast, toastMsg }), [snapshot, M, me, dev, layer, open, close, toast, toastMsg]);
+  const value = useMemo(() => ({ snap: snapshot, M, me, dev, layer, open, openNew, canEdit, canCreate, close, toast, toastMsg }), [snapshot, M, me, dev, layer, open, openNew, canEdit, canCreate, close, toast, toastMsg]);
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
 }
 

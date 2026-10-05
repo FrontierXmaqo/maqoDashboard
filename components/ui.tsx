@@ -16,6 +16,7 @@ const IC: Record<string, ReactNode> = {
   rep: <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" />,
   set: <><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></>,
   x: <path d="M6 6l12 12M18 6 6 18" />,
+  plus: <path d="M12 5v14M5 12h14" />,
   left: <path d="m15 6-6 6 6 6" />,
   right: <path d="m9 6 6 6-6 6" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
