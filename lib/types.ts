@@ -79,4 +79,6 @@ export type Snapshot = {
   writesEnabled: boolean;
   /** Rows skipped because they repeat a row from an earlier task table. */
   duplicatesSkipped: number;
+  /** Tasks hidden because a person in config/hidden.ts is Responsible or Accountable. */
+  hiddenTasks: number;
 };

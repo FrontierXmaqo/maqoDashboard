@@ -90,6 +90,7 @@ test('model: overdue, open counts, support excluded from workload', () => {
     overloadedAt: 5,
     writesEnabled: false,
     duplicatesSkipped: 0,
+    hiddenTasks: 0,
   };
   const m = build(snap, undefined, now);
   const t = (id: string) => m.tasks.find((x) => x.id === id)!;
@@ -119,4 +120,23 @@ test('rows repeated in a later table count once; edited copies count again', asy
 
 test('ignored Lark department names map to nothing', () => {
   for (const n of ['MAQO Solar', 'Design', 'Product', 'R&D']) assert.equal(mapDepartment(n), null);
+});
+
+test('hidden people and their tasks are removed; they are dropped from Support elsewhere', async () => {
+  const { hideConfigured } = await import('../lib/data/hide.ts');
+  const x = { openId: 'ou_x', name: 'X', avatarUrl: null };
+  const a = { openId: 'ou_a', name: 'A', avatarUrl: null };
+  const base = mapTask({ record_id: 'r', fields: {} }, SRC);
+  const r = hideConfigured(
+    [
+      { ...base, id: '1', accountable: [x] },
+      { ...base, id: '2', assignees: [x] },
+      { ...base, id: '3', assignees: [a], support: [x, a] },
+      { ...base, id: '4', assignees: [a] },
+    ],
+    ['ou_x'],
+  );
+  assert.deepEqual(r.tasks.map((t) => t.id), ['3', '4']);
+  assert.deepEqual(r.tasks[0].support.map((u) => u.openId), ['ou_a']);
+  assert.equal(r.hiddenTasks, 2);
 });

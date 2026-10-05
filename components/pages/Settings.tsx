@@ -104,6 +104,7 @@ export default function Settings() {
           </table>
         </div>
         {snap.duplicatesSkipped > 0 && <p className="muted">{snap.duplicatesSkipped} rows in a later table exactly repeat a row in an earlier one (same task, status, deadline and Task Responsible) and are counted once.</p>}
+        {snap.hiddenTasks > 0 && <p className="muted">{snap.hiddenTasks} tasks are hidden because they belong to people listed in config/hidden.ts (not Maqo staff).</p>}
         <p className="muted num">{M.people.length} people ({M.people.filter((p) => p.source === 'contacts').length} from the org chart), {M.projects.length} projects, {M.tasks.length} tasks. Status options the app writes: {TASK_STATUS_OPTIONS.join(', ')}.</p>
       </section>
     </>
