@@ -6,7 +6,7 @@ import { mapDepartment } from '../../config/departments.ts';
 import { PROJECTS_SOURCE, TASK_SOURCES } from '../../config/task-sources.ts';
 import { LarkConfigError, larkEnv } from '../lark/env.ts';
 import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
-import { listAllDepartments, listDepartmentUsers, type LarkDepartment } from '../lark/contacts.ts';
+import { getDepartments, getUsers, listAllDepartments, listChildDepartments, listDepartmentUsers, listScopes, type LarkDepartment, type LarkUser } from '../lark/contacts.ts';
 import type { Person, Project, Snapshot, Task } from '../types.ts';
 import { cached } from './cache.ts';
 import { mapTask } from './mapTask.ts';
@@ -38,7 +38,23 @@ type OrgChart = { people: Person[]; departments: LarkDepartment[] };
 async function loadOrgChart(): Promise<OrgChart> {
   if (fixturesEnabled()) return { people: [], departments: [] };
   return cached('contacts', CONTACTS_CACHE_SECONDS, async () => {
-    const departments = (await listAllDepartments()).filter((d) => !d.status?.is_deleted);
+    // Whole company when the contacts range is "all members"; otherwise start from the
+    // departments and people the range grants (listing from the root is refused then).
+    let departments: LarkDepartment[];
+    let roots: string[];
+    let extraUsers: LarkUser[] = [];
+    try {
+      departments = await listAllDepartments();
+      roots = ['0'];
+    } catch {
+      const scope = await listScopes();
+      const granted = await getDepartments(scope.departmentIds);
+      const below = (await Promise.all(scope.departmentIds.map((id) => listChildDepartments(id).catch(() => [])))).flat();
+      departments = [...new Map([...granted, ...below].map((d) => [d.open_department_id, d])).values()];
+      roots = [];
+      extraUsers = await getUsers(scope.userIds).catch(() => []);
+    }
+    departments = departments.filter((d) => !d.status?.is_deleted);
     const byId = new Map(departments.map((d) => [d.open_department_id, d]));
     const deptName = (d: LarkDepartment) => d.i18n_name?.en_us || d.name || '';
 
@@ -54,21 +70,23 @@ async function loadOrgChart(): Promise<OrgChart> {
     };
 
     const people = new Map<string, Person>();
-    for (const deptId of ['0', ...departments.map((d) => d.open_department_id)]) {
-      for (const u of await listDepartmentUsers(deptId)) {
-        if (!u.open_id || u.status?.is_resigned || u.status?.is_exited || people.has(u.open_id)) continue;
-        const ids = u.department_ids ?? [];
-        people.set(u.open_id, {
-          openId: u.open_id,
-          name: u.en_name || u.name || 'Not set',
-          avatarUrl: u.avatar?.avatar_72 || null,
-          jobTitle: u.job_title ?? '',
-          larkDepartments: ids.map((id) => byId.get(id)).filter(Boolean).map((d) => deptName(d!)),
-          dept: ids.map(appDeptOf).find((d) => d != null) ?? null,
-          source: 'contacts',
-        });
-      }
+    const add = (u: LarkUser) => {
+      if (!u.open_id || u.status?.is_resigned || u.status?.is_exited || people.has(u.open_id)) return;
+      const ids = u.department_ids ?? [];
+      people.set(u.open_id, {
+        openId: u.open_id,
+        name: u.en_name || u.name || 'Not set',
+        avatarUrl: u.avatar?.avatar_72 || null,
+        jobTitle: u.job_title ?? '',
+        larkDepartments: ids.map((id) => byId.get(id)).filter(Boolean).map((d) => deptName(d!)),
+        dept: ids.map(appDeptOf).find((d) => d != null) ?? null,
+        source: 'contacts',
+      });
+    };
+    for (const deptId of [...roots, ...departments.map((d) => d.open_department_id)]) {
+      for (const u of await listDepartmentUsers(deptId)) add(u);
     }
+    extraUsers.forEach(add);
     return { people: [...people.values()], departments };
   });
 }
