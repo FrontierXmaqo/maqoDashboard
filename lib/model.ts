@@ -150,7 +150,7 @@ export function build(snap: Snapshot, viewer: Viewer = CEO_VIEWER, now = Date.no
   const people: PersonX[] = snap.people.map((p) => {
     const mine = tasks.filter((t) => t.assignees.some((a) => a.openId === p.openId));
     const open = mine.filter((t) => !t.done);
-    const n = open.length;
+    const n = p.openTotal ?? open.length;
     const cur = open.slice().sort((a, b) => STAGE_ORDER[a.stage] - STAGE_ORDER[b.stage] || a.dd - b.dd)[0];
     const next = open.slice().sort((a, b) => a.dd - b.dd)[0];
     return {

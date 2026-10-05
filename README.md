@@ -8,9 +8,9 @@ Full brief: [docs/PROMPT.md](docs/PROMPT.md). Design reference:
 
 ## Status
 
-Phase 2: read-only dashboard. All pages from the reference read live Lark data, with
-"Not set" wherever a value is missing. Everyone sees the CEO view until Lark sign-in
-(Phase 3). No writes yet (Phase 4).
+Phase 3: Lark sign-in and roles. Every page reads live Lark data, with "Not set" wherever
+a value is missing. Each viewer is signed in through Lark and sees only what their role
+allows; data is filtered on the server. No writes yet (Phase 4).
 
 Local development without Lark access: `LARK_FIXTURES=1 npm run dev` loads sample data
 (never in production).
@@ -31,12 +31,37 @@ cp .env.example .env.local   # fill in values; never commit them
 | `npm run typecheck` | TypeScript check. |
 | `npm run dev` / `npm run build` | Next.js. |
 
+## Sign-in and roles
+
+- Inside Lark, the app gets a one-time code from the Lark JSSDK (`tt.requestAccess`, or
+  `tt.requestAuthCode` on older clients). The server exchanges it at
+  `POST /authen/v2/oauth/token`, reads the person's `open_id` from
+  `GET /authen/v1/user_info`, and sets a signed, httpOnly session cookie (12 hours).
+- Opened outside Lark, the app shows "Please open this in Lark".
+- Roles come from `config/roles.ts`: CEO `open_id`s, and each leader's `open_id` with the
+  departments they lead. Everyone else is an employee of their org-chart department.
+  Each person can see their own Lark ID on the Settings page; the CEO sees everyone's in
+  the employee drawer.
+- CEO sees everything. A leader sees their departments. An employee sees their own tasks
+  plus their department's tasks. Data outside the role never reaches the browser.
+
+Lark developer console for sign-in: enable the Web App capability with the Vercel URL as
+its homepage, and add that URL under Security settings > Redirect URLs. Make the app
+available to everyone who should use it.
+
+Dev sign-in (mock roles): `/dev-login` lets you sign in as a CEO, a leader of any
+departments, or an employee. It works in local development, and on Vercel preview
+deployments only when `DEV_LOGIN=1`. It is always off in production. A red DEV SIGN-IN
+badge shows while it's in use.
+
 ## Where things live
 
 - `config/task-sources.ts`: task tables and the projects table. Add a department's task table here.
 - `config/schema.ts`: the expected Lark field names, types and select options.
 - `config/app.ts`: free threshold, timezone, Lark API base URL.
-- `config/departments.ts`, `config/roles.ts`: departments and role assignments (filled in Phase 3).
+- `config/departments.ts`: the 9 departments and the Lark-name mapping overrides.
+- `config/roles.ts`: CEO and leader `open_id`s.
+- `lib/auth/`: session cookie, Lark code exchange, role resolution and server-side scoping.
 - `lib/lark/`: server-only Lark client (token caching, pagination, Base reads).
 
 ## Lark scopes needed so far

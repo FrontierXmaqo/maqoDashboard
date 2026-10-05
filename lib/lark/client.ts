@@ -27,7 +27,7 @@ let cached: CachedToken | null = null;
 let inflight: Promise<string> | null = null;
 
 /** Test hook. Lets tests point the client at a local mock server. */
-function apiBase(): string {
+export function apiBase(): string {
   return process.env.LARK_API_BASE_FOR_TESTS || LARK_API_BASE;
 }
 

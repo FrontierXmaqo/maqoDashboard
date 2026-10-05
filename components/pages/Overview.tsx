@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useData } from '../DataProvider';
+import MyWork from './MyWork';
 import { DeptChips, Legend, LoadCell, Pill, Seg, SegBar, Stepper, TaskTable, Who, projectMeta, NotSet } from '../ui';
 import { dayToIso, fd, fdy, isoToDay, monthRange, people, plural, weekRange, weekday } from '../../lib/dates';
 import { STAGES, STATUS, personInDept, type Model, type StatusKey, type Tone } from '../../lib/model';
@@ -260,6 +261,12 @@ function ProgressCard({ M, range, from, to }: { M: Model; range: Range; from: st
 
 export default function Overview() {
   const { M } = useData();
+  if (M.viewer.role === 'employee') return <MyWork />;
+  return <TeamOverview />;
+}
+
+function TeamOverview() {
+  const { M } = useData();
   const [range, setRange] = useState<Range>('week');
   const [from, setFrom] = useState(dayToIso(M.t0));
   const [to, setTo] = useState(dayToIso(M.t0 + 14));
@@ -274,7 +281,7 @@ export default function Overview() {
     <>
       <div className="topbar">
         <div>
-          <h1 className="title">Company overview</h1>
+          <h1 className="title">{M.viewer.role === 'ceo' ? 'Company overview' : `${M.viewer.depts.join(' + ') || 'Team'} overview`}</h1>
           <p className="muted">{weekday(M.t0)}, {fdy(M.t0)}</p>
         </div>
         <Seg<Range> label="Date range" value={range} onChange={setRange} options={[['today', 'Today'], ['week', 'This week'], ['month', 'This month'], ['custom', 'Custom']]} />
@@ -293,10 +300,10 @@ export default function Overview() {
           <span>Free now</span><span className="v num">{cnt('free')}</span><span className="muted">{M.freeThreshold} or fewer open tasks</span>
         </button>
         <Link className="kpi" href="/employees" style={{ textDecoration: 'none' }}>
-          <span className="muted">Total employees</span><span className="v num">{E.length}</span><span className="muted">On leave: not set</span>
+          <span className="muted">{M.viewer.role === 'ceo' ? 'Total employees' : 'Team size'}</span><span className="v num">{E.length}</span><span className="muted">On leave: not set</span>
         </Link>
         <button type="button" className="kpi" onClick={() => { setTeamStatus('working'); scrollTo('team'); }}>
-          <span className="muted">Working</span><span className="v num" style={{ color: 'var(--b-fg)' }}>{cnt('working')}</span><span className="muted">{M.freeThreshold + 1} to {M.overloadedAt - 1} open tasks</span>
+          <span className="muted">Working</span><span className="v num" style={{ color: 'var(--b-fg)' }}>{cnt('working')}</span><span className="muted">{M.overloadedAt - 1 > M.freeThreshold + 1 ? `${M.freeThreshold + 1} to ${M.overloadedAt - 1}` : M.freeThreshold + 1} open tasks</span>
         </button>
         <button type="button" className="kpi" onClick={() => { setTeamStatus('overloaded'); scrollTo('team'); }}>
           <span className="muted">Overloaded</span><span className="v num" style={{ color: 'var(--r-fg)' }}>{cnt('overloaded')}</span><span className="muted">{M.overloadedAt}+ open tasks</span>

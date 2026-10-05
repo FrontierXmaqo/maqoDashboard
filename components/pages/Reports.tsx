@@ -46,6 +46,14 @@ function downloadCsv(name: string, rows: (string | number)[][]) {
 export default function Reports() {
   const { M, open, toast } = useData();
   const [period, setPeriod] = useState<Period>('month');
+  if (M.viewer.role === 'employee') {
+    return (
+      <div className="card" style={{ alignItems: 'flex-start', padding: 28 }}>
+        <h1 className="title">Reports are for leaders</h1>
+        <p className="muted">Ask your department leader if you need a team report.</p>
+      </div>
+    );
+  }
   const [a, b] = bounds(M, period);
   const all = stats(M.sTasks, a, b);
   const depts = M.depts.map((d) => {

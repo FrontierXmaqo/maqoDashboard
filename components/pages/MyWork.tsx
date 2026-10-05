@@ -1,31 +1,19 @@
 'use client';
 
-import { useState } from 'react';
 import { useData } from '../DataProvider';
-import { Legend, Pill, SegBar, Select, TaskTable } from '../ui';
+import { Legend, Pill, SegBar, TaskTable } from '../ui';
 import { weekRange } from '../../lib/dates';
 import { STATUS, taskInDept } from '../../lib/model';
 
-// Until Lark sign-in arrives (Phase 3), this page previews any person's view.
 export default function MyWork() {
-  const { M, open } = useData();
-  const sorted = M.sPeople.slice().sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
-  const [who, setWho] = useState(sorted[0]?.openId ?? '');
-  const me = M.personById.get(who);
-
-  const picker = sorted.length > 0 && (
-    <div className="row">
-      <span className="muted">Preview as</span>
-      <Select id="mw-who" label="Person" value={who} onChange={setWho} options={sorted.map((p): [string, string] => [p.openId, `${p.name}${p.dept ? `, ${p.dept}` : ''}`])} />
-    </div>
-  );
-
+  const { M, open, me: who } = useData();
+  const me = M.personById.get(who.openId);
   if (!me) {
     return (
-      <div className="card" style={{ alignItems: 'flex-start', padding: 28 }}>
-        <h1 className="title">My work</h1>
-        <p className="muted">No people found yet. Once the org chart or task assignees load, each person’s tasks show here.</p>
-      </div>
+      <>
+        <div className="topbar"><div><h1 className="title">My work</h1><p className="muted">{who.name}</p></div></div>
+        <div className="card"><p className="muted">You have no tasks assigned in Lark yet, and you were not found in the org chart. Department: not set.</p></div>
+      </>
     );
   }
   const [wa, wb] = weekRange(M.t0);
@@ -39,9 +27,7 @@ export default function MyWork() {
           <h1 className="title">My work</h1>
           <p className="muted">{me.name}, {me.deptLabel}</p>
         </div>
-        {picker}
       </div>
-      <div className="banner t-n">Preview: sign-in through Lark comes in the next phase. Then this page shows the signed-in person automatically.</div>
       <section className="kpis k4">
         <div className="kpi big"><span>My open tasks</span><span className="v num">{me.n}</span><span className="muted">{STATUS[me.key].label}</span></div>
         <div className="kpi"><span className="muted">Due this week</span><span className="v num">{me.open.filter((t) => t.dueDay >= wa && t.dueDay <= wb).length}</span></div>

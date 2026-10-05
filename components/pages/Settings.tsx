@@ -10,7 +10,7 @@ import { DEPARTMENTS } from '../../config/departments';
 const timeFmt = new Intl.DateTimeFormat('en-MY', { timeZone: 'Asia/Kuala_Lumpur', dateStyle: 'medium', timeStyle: 'short' });
 
 export default function Settings() {
-  const { M, snap } = useData();
+  const { M, snap, me } = useData();
   const T = M.freeThreshold;
   const O = M.overloadedAt;
   const nameOf = (id: string) => M.personById.get(id)?.name ?? `Unknown (${id.slice(0, 10)}…)`;
@@ -69,9 +69,10 @@ export default function Settings() {
             </tbody>
           </table>
         </div>
-        <p className="muted">Sign-in through Lark and editing arrive in later phases. Right now everyone sees the CEO view, read-only.</p>
+        <p>Your Lark ID: <code className="num" style={{ userSelect: 'all' }}>{me.openId}</code></p>
+        <p className="muted">You are signed in as {me.name} ({M.viewer.role === 'ceo' ? 'CEO' : M.viewer.role === 'leader' ? `leader of ${M.viewer.depts.join(' + ')}` : 'employee'}). Editing arrives in the next phase; for now everything is read-only.</p>
       </section>
-      <section className="card">
+      {M.viewer.role === 'ceo' && <section className="card">
         <h2>Lark department mapping</h2>
         <p className="muted">Each Lark department name (org chart and task Department options) and the app department it maps to. Fix wrong ones in LARK_DEPARTMENT_OVERRIDES in config/departments.ts. App departments: {DEPARTMENTS.join(', ')}.</p>
         <div className="tbl">
@@ -84,7 +85,7 @@ export default function Settings() {
             </tbody>
           </table>
         </div>
-      </section>
+      </section>}
       <section className="card">
         <h2>Data</h2>
         <p>Read live from Lark Base. Last read {timeFmt.format(snap.generatedAt)}. The server reuses a read for up to 60 seconds.</p>

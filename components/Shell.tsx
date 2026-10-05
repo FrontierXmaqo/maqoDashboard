@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTransition, type ReactNode } from 'react';
 import { useData } from './DataProvider';
-import { Icon } from './ui';
+import { Avatar, Icon } from './ui';
 import { LayerView } from './Layer';
 
-export const PAGES = [
+export const PAGES: { href: string; label: string; ic: string; roles?: string[] }[] = [
   { href: '/', label: 'Overview', ic: 'dash' },
   { href: '/my-work', label: 'My work', ic: 'me' },
   { href: '/departments', label: 'Departments', ic: 'dept' },
@@ -15,21 +15,27 @@ export const PAGES = [
   { href: '/tasks', label: 'Tasks', ic: 'tasks' },
   { href: '/projects', label: 'Projects', ic: 'proj' },
   { href: '/calendar', label: 'Calendar', ic: 'cal' },
-  { href: '/reports', label: 'Reports', ic: 'rep' },
+  { href: '/reports', label: 'Reports', ic: 'rep', roles: ['ceo', 'leader'] },
   { href: '/settings', label: 'Settings', ic: 'set' },
 ];
 
 const timeFmt = new Intl.DateTimeFormat('en-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: 'numeric', minute: '2-digit' });
 
 export function Shell({ children }: { children: ReactNode }) {
-  const { M, snap, toastMsg } = useData();
+  const { M, snap, toastMsg, me, dev } = useData();
+  const role = M.viewer.role;
+  const roleLabel = role === 'ceo' ? 'CEO, all departments' : role === 'leader' ? `Leader, ${M.viewer.depts.join(' + ')}` : `Employee${M.viewer.depts[0] ? `, ${M.viewer.depts[0]}` : ''}`;
+  const signOut = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/dev-login';
+  };
   const path = usePathname();
   const router = useRouter();
   const [pending, start] = useTransition();
   const overdue = M.sTasks.filter((t) => t.overdue).length;
 
   const nav = (mobile: boolean) =>
-    PAGES.map((p) => (
+    PAGES.filter((p) => !p.roles || p.roles.includes(role)).map((p) => (
       <Link key={p.href} href={p.href} className="nav" aria-current={path === p.href ? 'page' : undefined}>
         <Icon n={p.ic} />
         {p.label}
@@ -51,16 +57,20 @@ export function Shell({ children }: { children: ReactNode }) {
           {nav(false)}
           <div style={{ flexGrow: 1 }} />
           <div className="who" style={{ padding: '12px 10px', borderTop: '1px solid var(--line)' }}>
-            <span className="av" style={{ background: 'var(--text)', color: 'var(--bg)' }}>KK</span>
-            <span>
-              <b>CEO Office</b>
-              <span className="muted">All departments</span>
+            <Avatar p={me} />
+            <span style={{ minWidth: 0 }}>
+              <b>{me.name}</b>
+              <span className="muted">{roleLabel}</span>
             </span>
           </div>
+          {dev && (
+            <button type="button" className="btn sm danger" onClick={signOut}>DEV SIGN-IN · Switch user</button>
+          )}
         </nav>
         <nav className="mtop" aria-label="Main">{nav(true)}</nav>
         <main className="main">
           <div className="spread" style={{ justifyContent: 'flex-end' }}>
+            {dev && <span className="tag t-r" style={{ marginRight: 'auto' }}>DEV SIGN-IN: {roleLabel}</span>}
             <span className="muted num">Updated {timeFmt.format(snap.generatedAt)}</span>
             <button type="button" className="btn sm" disabled={pending} onClick={() => start(() => router.refresh())}>
               <Icon n="refresh" s={14} />

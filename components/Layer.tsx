@@ -85,6 +85,7 @@ function EmployeeDrawer({ id }: { id: string }) {
         <dt>On leave</dt><dd><NotSet /></dd>
         <dt>Projects</dt><dd>{projs.length ? projs.join(', ') : 'None yet'}</dd>
         {leads.length > 0 && (<><dt>Leads</dt><dd>{leads.join(' + ')}</dd></>)}
+        {M.viewer.role === 'ceo' && (<><dt>Lark ID</dt><dd className="num" style={{ userSelect: 'all' }}>{e.openId}</dd></>)}
         {e.source === 'tasks' && (<><dt>Org chart</dt><dd className="muted">Not found in the Lark org chart. Department taken from their tasks.</dd></>)}
       </dl>
       <div className="stack" style={{ gap: 6 }}>

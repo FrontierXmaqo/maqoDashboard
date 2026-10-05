@@ -56,6 +56,12 @@ export type Person = PersonRef & {
   larkDepartments: string[];
   /** 'contacts' = from the org chart; 'tasks' = only seen on tasks. */
   source: 'contacts' | 'tasks';
+  /**
+   * Open tasks as Task Responsible across ALL tables, set when the snapshot is scoped to a
+   * leader or employee, so "free" stays accurate even when some of the person's tasks are
+   * outside the viewer's departments.
+   */
+  openTotal?: number;
 };
 
 export type Snapshot = {

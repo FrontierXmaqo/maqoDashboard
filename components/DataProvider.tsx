@@ -1,14 +1,18 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { build, CEO_VIEWER, type Model } from '../lib/model';
-import type { Snapshot } from '../lib/types';
+import { build, type Model, type Viewer } from '../lib/model';
+import type { PersonRef, Snapshot } from '../lib/types';
 
 export type Layer = { type: 'emp' | 'proj' | 'task'; id: string } | null;
 
 type Ctx = {
   snap: Snapshot;
   M: Model;
+  /** The signed-in person. */
+  me: PersonRef;
+  /** Signed in through dev mode with a mocked role. */
+  dev: boolean;
   layer: Layer;
   open: (type: NonNullable<Layer>['type'], id: string) => void;
   close: () => void;
@@ -18,9 +22,9 @@ type Ctx = {
 
 const DataCtx = createContext<Ctx | null>(null);
 
-export function DataProvider({ snapshot, children }: { snapshot: Snapshot; children: ReactNode }) {
+export function DataProvider({ snapshot, viewer, me, dev, children }: { snapshot: Snapshot; viewer: Viewer; me: PersonRef; dev: boolean; children: ReactNode }) {
   // "Today" comes from when the data was read, so server and browser render the same thing.
-  const M = useMemo(() => build(snapshot, CEO_VIEWER, snapshot.generatedAt), [snapshot]);
+  const M = useMemo(() => build(snapshot, viewer, snapshot.generatedAt), [snapshot, viewer]);
   const [layer, setLayer] = useState<Layer>(null);
   const [toastMsg, setToastMsg] = useState('');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,7 +47,7 @@ export function DataProvider({ snapshot, children }: { snapshot: Snapshot; child
     document.body.style.overflow = layer ? 'hidden' : '';
   }, [layer]);
 
-  const value = useMemo(() => ({ snap: snapshot, M, layer, open, close, toast, toastMsg }), [snapshot, M, layer, open, close, toast, toastMsg]);
+  const value = useMemo(() => ({ snap: snapshot, M, me, dev, layer, open, close, toast, toastMsg }), [snapshot, M, me, dev, layer, open, close, toast, toastMsg]);
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
 }
 
