@@ -1,109 +1,163 @@
 # Maqo Command Center
 
-Internal dashboard showing who is working on which task and who is free. Reads live
-data from Lark Base, runs on Vercel and opens inside Lark as a web app.
+Internal dashboard showing who is working on which task and who is free. It reads live
+data from Lark Base, runs on Vercel, and opens inside Lark as a web app.
 
-Full brief: [docs/PROMPT.md](docs/PROMPT.md). Design reference:
-[reference/command-center.html](reference/command-center.html).
+- Brief: [docs/PROMPT.md](docs/PROMPT.md)
+- Design reference: [reference/command-center.html](reference/command-center.html)
+- Stack: Next.js (App Router) + TypeScript on Vercel. All Lark calls run on the server; the
+  App Secret never reaches the browser.
 
-## Status
+## Current status
 
-Phase 4: leader writes, built and tested against a local mock only. Leaders and the CEO
-can create, assign and edit tasks; every write is checked on the server. Writes are OFF
-unless `LARK_WRITES_ENABLED=1`, and have not yet been run against any real Base.
+| Part | State |
+|---|---|
+| Live dashboard (Overview, Departments, Employees, Tasks, Projects, Calendar, Reports, Settings) | On |
+| **CEO-only mode** (no sign-in, everyone sees the CEO view, no editing) | **On** (`CEO_ONLY_MODE` in `config/app.ts`) |
+| Lark sign-in, leader and employee views | Built, switched off by CEO-only mode |
+| Editing tasks (create, assign, status, notes) | Built and mock-tested, switched off. Not yet run against any real Base |
 
-Local development without Lark access: `LARK_FIXTURES=1 npm run dev` loads sample data
-(never in production).
+While CEO-only mode is on, **keep Vercel Deployment Protection on** (Project > Settings >
+Deployment Protection). With no Lark sign-in, it is the only lock on the data.
 
-## Setup
+## Environment variables (Vercel > Settings > Environment Variables)
 
-Requires Node.js 22.18 or newer.
+Set values in Vercel only. Never commit them. `.env.example` lists the names.
+
+| Name | Needed | What it is |
+|---|---|---|
+| `LARK_APP_ID` | Yes | Lark developer console > your app > Credentials & Basic Info > App ID |
+| `LARK_APP_SECRET` | Yes | Same page, App Secret. Server-only |
+| `LARK_BASE_TOKEN` | Yes | The Base's app token: the part after `/base/` in its URL (`NvYSbmF6aadBCvs0nhllBG5Zg1d`) |
+| `SESSION_SECRET` | When sign-in is on | 32+ random characters, e.g. `openssl rand -base64 48`. Signs the session cookie |
+| `FREE_THRESHOLD` | No | Open tasks at or below this = Free. Default 3 |
+| `LARK_WRITES_ENABLED` | No | `1` turns editing on (only when CEO-only mode is off). Leave empty until writes are approved |
+| `DEV_LOGIN` | No | Preview deployments only: `1` allows `/dev-login` mock sign-in. Never set in Production |
+
+Tick **Production** and **Preview** for the Lark variables if you want preview links to
+show real data. For write testing, point Preview's `LARK_BASE_TOKEN` at a **copy** of the
+Base, never the live one. After changing variables, redeploy: Vercel only reads them at
+build time for new deployments.
+
+## Lark setup (developer console: open.larksuite.com/app)
+
+### 1. Permissions (Permissions & Scopes)
+
+| Scope | Why | Needed now |
+|---|---|---|
+| `bitable:app:readonly` | Read tables, fields and records | Yes |
+| `contact:contact.base:readonly` | Call the org-chart APIs | Yes |
+| `contact:department.base:readonly` | Department names | Yes |
+| `contact:user.base:readonly` | Names and avatars (org chart and person fields on tasks) | Yes |
+| `contact:user.department:readonly` | Each person's department | Yes |
+| `bitable:app` | Create and update task records | Only when editing is turned on |
+
+Then set the app's **contacts visibility range** to the whole company, and publish a new
+version of the app so the scopes take effect (Version Management & Release).
+
+### 2. Add the app to the Base
+
+The app reads the Base as itself, so it needs access like any collaborator:
+
+1. Open the Base in Lark.
+2. Top-right **…** > **…More** > **Add document app**.
+3. Search for the app and add it. Read access is enough for now; give **Can edit** when
+   editing is turned on. If the Base uses advanced permissions, give the app **Can manage**,
+   otherwise record reads come back empty.
+
+The app only shows up in that search after at least one Base permission (step 1) is enabled.
+
+### 3. Web app (needed when CEO-only mode is turned off)
+
+1. **Features > Web App**: set the desktop and mobile homepage to the Vercel production URL
+   (`https://maqodashboard.vercel.app`, or your custom domain).
+2. **Security Settings > Redirect URLs**: add the same URL.
+3. **Availability**: make the app available to everyone who should use it.
+4. Publish a new version.
+
+Staff then open it from Lark Workplace. Inside Lark the app signs people in automatically
+(JSSDK `tt.requestAccess`, falling back to `tt.requestAuthCode`; the server exchanges the
+code at `POST /authen/v2/oauth/token` and reads the `open_id` from `GET /authen/v1/user_info`).
+Opened outside Lark it shows "Please open this in Lark".
+
+## Deploying
+
+The Vercel project `maqodashboard` is linked to this GitHub repo. Every push to `main`
+deploys to production; every other branch gets a preview link. Functions run in Singapore
+(`sin1`, set in `vercel.json`), close to Lark's Singapore servers and to Malaysia.
+
+To check the Base matches what the app expects, open `/api/check-schema` on a **preview**
+link (it is turned off in production), or run `npm run check-schema` locally with a
+`.env.local`. It lists missing, renamed or retyped fields and status options that differ.
+
+## Roles (when CEO-only mode is off)
+
+`config/roles.ts` holds CEO `open_id`s and each leader's `open_id` with their departments
+(a division head can lead two). Everyone else is an employee of their org-chart
+department. Each person sees their own Lark ID on the Settings page; the CEO sees
+everyone's in the employee drawer.
+
+| | CEO | Leader | Employee |
+|---|---|---|---|
+| Sees | Everything | Their departments | Own tasks + own department |
+| Edits | Any task | Tasks in their departments; assigns their own people | Nothing (API answers 403) |
+
+Data outside a viewer's role is removed on the server before it reaches the browser.
+
+## How the data is read
+
+- Task tables (`config/task-sources.ts`): `(PH) Task Breakdown` and `(O&M) Task Breakdown
+  Copy`, merged. Add a department's table by adding one entry, if it uses the same field
+  names (`config/schema.ts`).
+- Projects: `O&M CNI HANDOVER,CONTACT INFO`, read-only.
+- People and departments: the Lark org chart, mapped to the 9 app departments in
+  `config/departments.ts` (fix wrong mappings in `LARK_DEPARTMENT_OVERRIDES`; Settings lists
+  every Lark name and where it landed). People seen on tasks but not in the org chart are
+  added with their department taken from their tasks.
+- Missing values show as **Not set**; a table or the org chart that can't be read becomes a
+  warning banner, never a crash.
+- Reads are cached on the server for 60 seconds (org chart 10 minutes); the Refresh button
+  reloads.
+- Rules: overdue = Estimate Deadline day (Kuala Lumpur time) before today and status not
+  Completed. Free = open tasks as Task Responsible ≤ `FREE_THRESHOLD`; overloaded = 5 or
+  more. Task Support doesn't count toward workload. On leave: no data source yet, shown as
+  Not set.
+
+## Editing (when switched on)
+
+- Writes only: `Task`, `Task Status` (exact options: Not yet started, Ongoing, O&M Stage,
+  Stalled, Completed), `Task Responsible`, `Task Support`, `Start date`,
+  `Estimate Deadline`, `Priority`, `Progress notes`, `Task summary`, and `Actual End Date`
+  (set to now when a task becomes Completed). People as `[{ "id": "<open_id>" }]`, dates as
+  millisecond timestamps.
+- New tasks also get `Department`, once, using an option that already exists in Lark. O&M
+  tasks go to the O&M table, others to the PH table.
+- Never written: Department on existing tasks, the project link, anything else.
+
+## Local development
+
+Requires Node.js 22.18+.
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in values; never commit them
+cp .env.example .env.local   # fill in values; git ignores this file
+npm run dev                  # http://localhost:3000
+LARK_FIXTURES=1 npm run dev  # sample data, no Lark access needed (never in production)
 ```
 
 | Command | What it does |
 |---|---|
-| `npm run check-schema` | Reads every configured Lark table's fields and compares them with `config/schema.ts`. Read-only. Exit 0 = match, 1 = mismatches, 2 = could not run. |
-| `npm test` | Unit tests, plus an end-to-end run of the schema check against a mock Lark API. |
-| `npm run typecheck` | TypeScript check. |
-| `npm run dev` / `npm run build` | Next.js. |
+| `npm test` | Unit tests plus mock-Lark end-to-end tests |
+| `npm run typecheck` | TypeScript |
+| `npm run check-schema` | Compare the live Base with `config/schema.ts` (read-only) |
+| `npm run build` | Production build |
 
-## Sign-in and roles
+## Troubleshooting
 
-- Inside Lark, the app gets a one-time code from the Lark JSSDK (`tt.requestAccess`, or
-  `tt.requestAuthCode` on older clients). The server exchanges it at
-  `POST /authen/v2/oauth/token`, reads the person's `open_id` from
-  `GET /authen/v1/user_info`, and sets a signed, httpOnly session cookie (12 hours).
-- Opened outside Lark, the app shows "Please open this in Lark".
-- Roles come from `config/roles.ts`: CEO `open_id`s, and each leader's `open_id` with the
-  departments they lead. Everyone else is an employee of their org-chart department.
-  Each person can see their own Lark ID on the Settings page; the CEO sees everyone's in
-  the employee drawer.
-- CEO sees everything. A leader sees their departments. An employee sees their own tasks
-  plus their department's tasks. Data outside the role never reaches the browser.
-
-Lark developer console for sign-in: enable the Web App capability with the Vercel URL as
-its homepage, and add that URL under Security settings > Redirect URLs. Make the app
-available to everyone who should use it.
-
-Dev sign-in (mock roles): `/dev-login` lets you sign in as a CEO, a leader of any
-departments, or an employee. It works in local development, and on Vercel preview
-deployments only when `DEV_LOGIN=1`. It is always off in production. A red DEV SIGN-IN
-badge shows while it's in use.
-
-## CEO-only mode (current setting)
-
-`CEO_ONLY_MODE = true` in `config/app.ts`: there is no Lark sign-in, everyone who opens the
-deployment sees the full CEO view, and editing is off. Keep Vercel Deployment Protection
-on while this is set, because the deployment is then the only lock on the data. Set it to
-`false` to turn on Lark sign-in, the leader and employee views, and (with
-`LARK_WRITES_ENABLED=1`) editing.
-
-## Editing tasks
-
-- Who: the CEO on any task; a leader on tasks whose departments include one they lead;
-  employees never (the API answers 403). Leaders assign Task Responsible only to people in
-  their departments.
-- What is written: `Task`, `Task Status` (exact option names only), `Task Responsible`,
-  `Task Support`, `Start date`, `Estimate Deadline`, `Priority`, `Progress notes`,
-  `Task summary`, and `Actual End Date` (set to now when a task becomes Completed).
-  People are written as `[{ "id": "<open_id>" }]`, dates as millisecond timestamps.
-- New tasks: the app also writes `Department`, once, at creation, using an option that
-  already exists in Lark (it never creates options). O&M tasks go to the O&M table, all
-  other departments to the PH table (`createFor` in `config/task-sources.ts`).
-- Never written: Department on existing tasks, the project link, or anything else.
-- After a write the server clears its cache, so the change shows on the next refresh.
-- Writes need the `bitable:app` scope and `LARK_WRITES_ENABLED=1`.
-
-## Where things live
-
-- `config/task-sources.ts`: task tables and the projects table. Add a department's task table here.
-- `config/schema.ts`: the expected Lark field names, types and select options.
-- `config/app.ts`: free threshold, timezone, Lark API base URL.
-- `config/departments.ts`: the 9 departments and the Lark-name mapping overrides.
-- `config/roles.ts`: CEO and leader `open_id`s.
-- `lib/auth/`: session cookie, Lark code exchange, role resolution and server-side scoping.
-- `lib/lark/`: server-only Lark client (token caching, pagination, Base reads).
-
-## Lark scopes needed so far
-
-| Scope | Why |
+| You see | Fix |
 |---|---|
-| `bitable:app:readonly` | List tables and fields, search records |
-| `bitable:app` | Create and update task records (Phase 4) |
-| `contact:contact.base:readonly` | Call the org-chart APIs |
-| `contact:department.base:readonly` | Department names |
-| `contact:user.base:readonly` | People's names and avatars (org chart and person fields on tasks) |
-| `contact:user.department:readonly` | Which department each person belongs to |
-
-Also: add the app to the Base as a collaborator, and set the app's contacts
-visibility range to the whole company (developer console > Permissions). Web app login
-scopes are added in Phase 3.
-
-Rules the dashboard applies: a task is overdue when its Estimate Deadline day (Kuala
-Lumpur time) is before today and its status is not Completed. A person is free at
-FREE_THRESHOLD (default 3) or fewer open tasks as Task Responsible, and overloaded at 5
-or more.
+| "Lark is not connected on this deployment" | The Lark variables are missing for this environment (Production or Preview). Add them and redeploy |
+| "Could not read tasks …" with a permission error | Add the app to the Base (Lark setup step 2) and check the scopes |
+| Tables load but are empty | The Base uses advanced permissions: give the app Can manage |
+| "Could not read the org chart" | Enable the contact scopes and set the contacts visibility range, then publish a new app version |
+| Everyone's department is Not set | Org chart names don't map: add them to `LARK_DEPARTMENT_OVERRIDES` |
