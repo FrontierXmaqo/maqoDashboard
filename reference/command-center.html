@@ -1,0 +1,977 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maqo Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5F3;--surface:#FFFFFF;--surface2:#F6F8F6;--line:#E0E5E1;--line2:#ECEFED;--text:#17201A;--muted:#56605A;--soft:#3B453F;
+  --brand:#0B5D33;--brand-ink:#FFFFFF;--brand-tint:#E5EFE9;--hover:#EFF2F0;--scrim:rgba(23,32,26,.38);
+  --g-fg:#14532D;--g-bg:#E1F3E6;--g-dot:#1F9D55;
+  --b-fg:#1E3A8A;--b-bg:#E6EDFC;--b-dot:#2F5FD0;
+  --a-fg:#6B3E0A;--a-bg:#FBEFCF;--a-dot:#C98A0B;
+  --r-fg:#7F1D1D;--r-bg:#FBE4E4;--r-dot:#C93030;
+  --n-fg:#374151;--n-bg:#ECEEF0;--n-dot:#9AA1A9;
+  --shadow:0 1px 2px rgba(23,32,26,.06);--pop:0 20px 50px rgba(23,32,26,.2);
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111513;--surface:#191E1B;--surface2:#1F2521;--line:#2C342F;--line2:#242A26;--text:#E7ECE8;--muted:#9AA59E;--soft:#C3CBC5;
+  --brand:#56C489;--brand-ink:#08170E;--brand-tint:#1C3326;--hover:#222924;--scrim:rgba(0,0,0,.55);
+  --g-fg:#93DDB2;--g-bg:#173323;--g-dot:#3FBF77;--b-fg:#AFC5FF;--b-bg:#1B2947;--b-dot:#6C93F0;
+  --a-fg:#F1CF7C;--a-bg:#382E12;--a-dot:#E0A92B;--r-fg:#F6ABAB;--r-bg:#41201F;--r-dot:#E35D5D;
+  --n-fg:#C6CCD2;--n-bg:#2A2F33;--n-dot:#7E868E;--shadow:none;--pop:0 20px 50px rgba(0,0,0,.5);
+}}
+:root[data-theme="dark"]{
+  --bg:#111513;--surface:#191E1B;--surface2:#1F2521;--line:#2C342F;--line2:#242A26;--text:#E7ECE8;--muted:#9AA59E;--soft:#C3CBC5;
+  --brand:#56C489;--brand-ink:#08170E;--brand-tint:#1C3326;--hover:#222924;--scrim:rgba(0,0,0,.55);
+  --g-fg:#93DDB2;--g-bg:#173323;--g-dot:#3FBF77;--b-fg:#AFC5FF;--b-bg:#1B2947;--b-dot:#6C93F0;
+  --a-fg:#F1CF7C;--a-bg:#382E12;--a-dot:#E0A92B;--r-fg:#F6ABAB;--r-bg:#41201F;--r-dot:#E35D5D;
+  --n-fg:#C6CCD2;--n-bg:#2A2F33;--n-dot:#7E868E;--shadow:none;--pop:0 20px 50px rgba(0,0,0,.5);
+}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:400 13px/1.45 'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+*,*::before,*::after{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--brand)}
+h1,h2,h3,p{margin:0}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.layout{display:grid;grid-template-columns:228px minmax(0,1fr);min-height:100vh}
+.side{background:var(--surface);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:3px;position:sticky;top:env(safe-area-inset-top,0px);height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 10px 18px}
+.logo{width:32px;height:32px;border-radius:9px;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-weight:700;font-size:15px}
+.nav{display:flex;align-items:center;gap:12px;min-height:42px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:var(--soft);text-align:left;width:100%}
+.nav:hover{background:var(--hover)}
+.nav[aria-current="page"]{background:var(--brand-tint);color:var(--brand);font-weight:600}
+.nav svg{flex-shrink:0}
+.nav .badge{margin-left:auto}
+.main{padding:22px 28px 56px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+.title{font-size:22px;font-weight:600;letter-spacing:-.01em}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.spread{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.stack{display:flex;flex-direction:column;gap:10px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0;box-shadow:var(--shadow)}
+.card h2{font-size:15px;font-weight:600}
+.g2{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px}
+.g2b{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.kpis.k4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px 17px;display:flex;flex-direction:column;gap:5px;text-align:left;color:var(--text);box-shadow:var(--shadow)}
+.kpi .v{font-size:22px;font-weight:600;line-height:1.1}
+.kpi.big{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.kpi.big .v{font-size:32px;font-weight:700}
+.kpi.big .muted{color:inherit;opacity:.85}
+button.kpi:hover{border-color:var(--muted)}
+button.kpi.big:hover{border-color:var(--brand);filter:brightness(1.06)}
+
+.btn{min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:500;transition:transform 100ms ease-out,background-color 150ms}
+.btn:hover{background:var(--hover)}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);font-weight:600;min-height:42px}
+.btn.primary:hover{filter:brightness(1.07);background:var(--brand)}
+.btn.outline{border-color:var(--brand);color:var(--brand);font-weight:600}
+.btn.danger{color:var(--r-fg);border-color:var(--r-dot)}
+.btn.sm{min-height:34px;padding:0 10px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.icon-btn{width:40px;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--surface);display:grid;place-items:center}
+.icon-btn:hover{background:var(--hover)}
+
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px}
+.seg button{min-height:34px;padding:0 13px;border:0;border-radius:7px;background:transparent;color:var(--soft);font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--text);color:var(--bg)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{min-height:34px;padding:0 11px;border-radius:99px;border:1px solid var(--line);background:var(--surface);display:inline-flex;align-items:center;gap:6px;color:var(--text)}
+.chip[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text)}
+.chip.sq{border-radius:8px;border:0;background:var(--surface2);color:var(--soft)}
+.chip.sq[aria-pressed="true"]{background:var(--brand-tint);color:var(--brand);font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:99px;font-weight:500;white-space:nowrap}
+.tag{display:inline-flex;padding:1px 7px;border-radius:6px;white-space:nowrap}
+.t-g{background:var(--g-bg);color:var(--g-fg)}.d-g{background:var(--g-dot)}
+.t-b{background:var(--b-bg);color:var(--b-fg)}.d-b{background:var(--b-dot)}
+.t-a{background:var(--a-bg);color:var(--a-fg)}.d-a{background:var(--a-dot)}
+.t-r{background:var(--r-bg);color:var(--r-fg)}.d-r{background:var(--r-dot)}
+.t-n{background:var(--n-bg);color:var(--n-fg)}.d-n{background:var(--n-dot)}
+.d-k{background:var(--text)}
+.c-r{color:var(--r-fg);font-weight:600}.c-a{color:var(--a-fg);font-weight:600}
+
+.av{position:relative;width:34px;height:34px;border-radius:50%;background:var(--surface2);border:1px solid var(--line);display:grid;place-items:center;font-weight:600;flex-shrink:0}
+.av.lg{width:48px;height:48px;font-size:15px}
+.av .dot{position:absolute;right:-2px;bottom:-2px;width:11px;height:11px;border:2px solid var(--surface)}
+.who{display:flex;align-items:center;gap:10px;min-width:0}
+.who b{font-weight:600;display:block}
+.who span{display:block}
+
+.tbl{overflow-x:auto}
+.tbl table{width:100%;border-collapse:collapse;min-width:680px}
+.tbl th{font-weight:400;color:var(--muted);text-align:left;padding:0 10px 8px;border-bottom:1px solid var(--line2);white-space:nowrap}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--line2);vertical-align:middle}
+.tbl tr.click{cursor:pointer}
+.tbl tr.click:hover td{background:var(--hover)}
+.tbl th button{border:0;background:none;padding:0;color:inherit;font:inherit;display:inline-flex;gap:4px;align-items:center}
+.linkish{border:0;background:none;padding:0;text-align:left;color:inherit;font:inherit;cursor:pointer}
+.linkish:hover b,.linkish:hover .ttl{text-decoration:underline}
+
+.bar{position:relative;flex-grow:1;height:6px;border-radius:99px;background:var(--line2);overflow:hidden;min-width:40px}
+.bar>i{display:block;height:100%;border-radius:99px}
+.bar.thick{height:9px}
+.bar .mark{position:absolute;top:0;bottom:0;width:2px;background:var(--text);opacity:.35}
+.barrow{display:flex;align-items:center;gap:8px}
+
+.list-btn{display:flex;align-items:flex-start;gap:10px;border:0;background:transparent;border-radius:9px;padding:9px 8px;text-align:left;width:100%}
+.list-btn:hover{background:var(--hover)}
+.empty{padding:16px 10px;color:var(--muted)}
+
+.steps{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.steps .seg4{display:inline-flex;gap:3px}
+.steps .seg4 i{width:16px;height:6px;border-radius:3px;background:var(--line)}
+.segbar{position:relative;display:flex;gap:2px;flex-grow:1;height:10px;border-radius:99px;overflow:hidden;background:var(--line2);min-width:60px}
+.segbar>i{display:block;height:100%}
+.segbar .mark{position:absolute;top:0;bottom:0;width:2px;background:var(--text);opacity:.45}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.stagepick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.stageopt{position:relative;display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;border:1px solid var(--line);border-radius:10px;cursor:pointer;font-weight:500;padding:0 8px;text-align:center}
+.stageopt input{position:absolute;opacity:0;pointer-events:none}
+.stageopt:has(input:checked){border:2px solid var(--text);background:var(--surface2)}
+.stageopt:has(input:focus-visible){outline:2px solid var(--brand);outline-offset:2px}
+.stageopt.off{opacity:.45;cursor:not-allowed}
+@media (max-width:520px){.stagepick{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.board{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:12px;overflow-x:auto;padding-bottom:4px}
+.col{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:160px}
+.tcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.tcard .ttl{font-weight:500}
+
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.pcard{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;color:var(--text)}
+.pcard:hover{border-color:var(--muted)}
+
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--line)}
+.cal .hd{background:var(--surface2);padding:8px;color:var(--muted);text-align:center}
+.cal .day{background:var(--surface);min-height:104px;padding:6px;display:flex;flex-direction:column;gap:4px;border:0;text-align:left;color:var(--text);gap:3px}
+.cal .day.out{background:var(--surface2);color:var(--muted)}
+.cal .day[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--brand)}
+.cal .dnum{font-weight:600;width:24px;height:24px;display:grid;place-items:center;border-radius:50%}
+.cal .today .dnum{background:var(--brand);color:var(--brand-ink)}
+.cal .ev{display:block;font-size:12px;line-height:1.3;padding:2px 6px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.field label,.field .lbl{font-weight:500}
+.inp{min-height:42px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--surface);width:100%}
+textarea.inp{padding:10px 12px;min-height:84px;resize:vertical}
+select.inp{padding-right:8px}
+.inp:focus{border-color:var(--brand)}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.check{display:inline-flex;align-items:center;gap:8px;min-height:36px}
+.check input{width:18px;height:18px;accent-color:var(--brand)}
+.help{color:var(--muted)}
+.err{color:var(--r-fg)}
+
+.overlay{position:fixed;inset:0;z-index:40;display:flex}
+.scrim{position:absolute;inset:0;border:0;background:var(--scrim);cursor:default}
+.drawer{position:relative;margin-left:auto;width:460px;max-width:100%;height:100%;overflow-y:auto;background:var(--surface);padding:calc(22px + env(safe-area-inset-top,0px)) 22px calc(22px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:18px;box-shadow:var(--pop);animation:slin 280ms cubic-bezier(.16,1,.3,1)}
+.modal{position:relative;margin:auto;width:600px;max-width:calc(100% - 24px);max-height:calc(100% - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto;background:var(--surface);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--pop);animation:pop 220ms cubic-bezier(.16,1,.3,1)}
+.modal.sm{width:420px}
+.mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.mini>div{background:var(--surface2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:3px}
+.toast{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--text);color:var(--bg);border-radius:12px;padding:12px 16px;box-shadow:var(--pop);display:flex;align-items:center;gap:10px;max-width:calc(100% - 40px);animation:pop 220ms cubic-bezier(.34,1.56,.64,1)}
+.banner{border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px}
+.skel{height:14px;border-radius:6px;background:linear-gradient(90deg,var(--line2),var(--surface2),var(--line2));background-size:200% 100%;animation:sh 1.2s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+@keyframes slin{from{transform:translateX(28px);opacity:0}to{transform:none;opacity:1}}
+@keyframes pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+.mtop{display:none}
+
+@media (max-width:1240px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.g2,.g2b{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:900px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .side{display:none}
+  .mtop{display:flex;position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top,0px));gap:4px;overflow-x:auto}
+  .mtop .nav{width:auto;white-space:nowrap;min-height:40px}
+  .main{padding:16px 14px 48px}
+  .kpis,.kpis.k4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g3,.fgrid{grid-template-columns:minmax(0,1fr)}
+  .cal .day{min-height:64px}
+  .cal .ev{font-size:0;height:6px;padding:0}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="layer"></div>
+<div id="toast" aria-live="polite"></div>
+<script>
+'use strict';
+/* ---------- utils ---------- */
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+const TODAY=todayStr();
+function dn(s){if(!s||typeof s!=='string')return NaN;const p=s.split('-');return Math.round(Date.UTC(+p[0],+p[1]-1,+p[2])/864e5);}
+function ds(n){return new Date(n*864e5).toISOString().slice(0,10);}
+const T0=dn(TODAY);
+function fd(s){if(!s)return '—';const p=s.split('-');return (+p[2])+' '+MON[+p[1]-1];}
+function fdy(s){if(!s)return '—';const p=s.split('-');return (+p[2])+' '+MON[+p[1]-1]+' '+p[0];}
+const plural=(n,w)=>n+' '+w+(n===1?'':'s');
+const people=n=>n+(n===1?' person':' people');
+const initials=n=>String(n||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const LS={get(k){try{return localStorage.getItem('maqo.cc.'+k)}catch(e){return null}},set(k,v){try{localStorage.setItem('maqo.cc.'+k,v)}catch(e){}}};
+function weekRange(){const dow=new Date(T0*864e5).getUTCDay();const a=T0-((dow+6)%7);return [a,a+6];}
+function monthRange(off){const d=new Date(T0*864e5);const y=d.getUTCFullYear(),m=d.getUTCMonth()+(off||0);return [Math.round(Date.UTC(y,m,1)/864e5),Math.round(Date.UTC(y,m+1,0)/864e5)];}
+function quarterRange(){const d=new Date(T0*864e5);const y=d.getUTCFullYear(),q=Math.floor(d.getUTCMonth()/3)*3;return [Math.round(Date.UTC(y,q,1)/864e5),Math.round(Date.UTC(y,q+3,0)/864e5)];}
+
+const IC={
+ dash:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+ people:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.8c1.9.6 3.1 2.4 3.5 5.2"/>',
+ tasks:'<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m8 12 3 3 5-6"/>',
+ dept:'<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5M9 10h.01M15 10h.01M12 10h.01"/>',
+ proj:'<path d="M3 7.5a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+ cal:'<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+ rep:'<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',
+ set:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>', x:'<path d="M6 6l12 12M18 6 6 18"/>',
+ left:'<path d="m15 6-6 6 6 6"/>', right:'<path d="m9 6 6 6-6 6"/>', check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+ dl:'<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>', sort:'<path d="M8 6v12M5 15l3 3 3-3M16 18V6M13 9l3-3 3 3"/>'
+};
+const icon=(n,s)=>'<svg width="'+(s||18)+'" height="'+(s||18)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+
+/* ---------- constants ---------- */
+const STATUS={
+ free:{label:'Free',tone:'g'}, working:{label:'Working',tone:'b'}, almost:{label:'Almost full',tone:'a'},
+ overloaded:{label:'Overloaded',tone:'r'}, leave:{label:'On leave',tone:'n'}
+};
+const PSTAT={ontrack:{label:'On track',tone:'g'},atrisk:{label:'At risk',tone:'a'},delayed:{label:'Delayed',tone:'r'},completed:{label:'Completed',tone:'n'}};
+const PRIO={high:{label:'High',tone:'r',rank:0},medium:{label:'Medium',tone:'a',rank:1},low:{label:'Low',tone:'n',rank:2}};
+const STAGES=[{k:'todo',label:'Not started',tone:'n'},{k:'inprogress',label:'Ongoing',tone:'b'},{k:'review',label:'Review',tone:'a'},{k:'done',label:'Complete',tone:'g'}];
+const STAGE_IDX={todo:0,inprogress:1,review:2,done:3};
+const STAGE_LABEL={todo:'Not started',inprogress:'Ongoing',review:'In review',done:'Complete'};
+const PAGES=[
+ {k:'dashboard',label:'Dashboard',ic:'dash'},{k:'departments',label:'Departments',ic:'dept'},{k:'employees',label:'Employees',ic:'people'},{k:'tasks',label:'Tasks',ic:'tasks'},
+ {k:'projects',label:'Projects',ic:'proj'},{k:'calendar',label:'Calendar',ic:'cal'},{k:'reports',label:'Reports',ic:'rep',roles:['ceo','leader']},
+ {k:'settings',label:'Settings',ic:'set'}
+];
+
+/* ---------- state ---------- */
+const S={
+ db:null, dbState:'connecting', canWrite:true, downloads:null,
+ emps:[],projs:[],tasks:[],settings:{capacity:5,almost:4},
+ loaded:{employees:false,projects:false,tasks:false},
+ role:LS.get('role')||'ceo', actor:LS.get('actor')||'', page:LS.get('page')||'dashboard',
+ ui:{range:'week',from:TODAY,to:ds(T0+14),teamStatus:'all',teamDept:'All',wlDept:'All',stage:'inprogress',
+  tq:'',tStatus:'open',tProj:'all',tEmp:'all',tPrio:'all',tDept:'All',tView:LS.get('tView')||'list',tSort:'due',tOverdue:false,
+  eq:'',eDept:'All',eStatus:'all',pStatus:'all',calMonth:TODAY.slice(0,7),calDay:TODAY,rPeriod:'month'},
+ layer:null, toastMsg:'', saving:false
+};
+let toastTimer=null;
+function toast(m){S.toastMsg=m;renderToast();clearTimeout(toastTimer);toastTimer=setTimeout(()=>{S.toastMsg='';renderToast();},2800);}
+function renderToast(){document.getElementById('toast').innerHTML=S.toastMsg?'<div class="toast" role="status">'+icon('check',16)+'<span>'+esc(S.toastMsg)+'</span></div>':'';}
+
+/* ---------- model ---------- */
+const DEPT_ORDER=['CEO Office','Residential','Commercial & Industrial','Marketing','Operations & Maintenance','Engineering','Finance','Human Resources','Procurement, Warehouse & Logistics'];
+function deptSort(a,b){const ia=DEPT_ORDER.indexOf(a),ib=DEPT_ORDER.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b);}
+function allDepts(){return Array.from(new Set(S.emps.map(e=>e.dept).filter(Boolean))).sort(deptSort);}
+function statusKey(n,leave){const c=S.settings||{};const cap=+c.capacity||5,al=+c.almost||4;if(leave)return 'leave';if(n===0)return 'free';if(n>=cap)return 'overloaded';if(n>=al)return 'almost';return 'working';}
+function ctx(){
+ const role=S.role;let me=S.emps.find(e=>e.id===S.actor)||null;
+ if(role==='leader'&&!(me&&(me.leads||[]).length))me=S.emps.find(e=>(e.leads||[]).length)||null;
+ if(role==='employee'&&!me)me=S.emps[0]||null;
+ const depts=role==='ceo'?allDepts():role==='leader'?(me?me.leads||[]:[]):(me?[me.dept]:[]);
+ return {role,me,depts};
+}
+function build(){
+ const c=ctx();
+ const empById={};S.emps.forEach(e=>empById[e.id]=e);
+ const projById={};S.projs.forEach(p=>projById[p.id]=p);
+ const tasks=S.tasks.map(t=>{
+  const dd=dn(t.due)-T0, done=t.status==='done', overdue=!done&&dd<0;
+  let dueLabel=fd(t.due),dueCls='';
+  if(isNaN(dd)){dueLabel='No date';}
+  else if(overdue){dueLabel=plural(-dd,'day')+' late';dueCls='c-r';}
+  else if(!done&&dd===0){dueLabel='Today';dueCls='c-a';}
+  else if(!done&&dd===1){dueLabel='Tomorrow';dueCls='c-a';}
+  const e=empById[t.emp];
+  return Object.assign({},t,{dd:isNaN(dd)?9999:dd,dueN:dn(t.due),done,overdue,dueLabel,dueCls,
+   empName:e?e.name:'Unassigned',dept:e?e.dept:'',projName:projById[t.proj]?projById[t.proj].name:'No project',
+   progress:done?100:(+t.progress||0),blocked:!!t.blockedBy&&!done});
+ });
+ const emps=S.emps.map(e=>{
+  const mine=tasks.filter(t=>t.emp===e.id),open=mine.filter(t=>!t.done);
+  const key=statusKey(open.length,!!e.onLeave);
+  const cap=+(S.settings.capacity)||5;
+  const ord={inprogress:0,review:1,todo:2};
+  const cur=open.slice().sort((a,b)=>(ord[a.status]-ord[b.status])||(a.dd-b.dd))[0];
+  const next=open.slice().sort((a,b)=>a.dd-b.dd)[0];
+  return Object.assign({},e,{mine,open,n:open.length,key,st:STATUS[key],cap,loadPct:Math.round(open.length/cap*100),cur,next,
+   overdueN:open.filter(t=>t.overdue).length});
+ });
+ const empX={};emps.forEach(e=>empX[e.id]=e);
+ const inScopeEmp=e=>c.role==='ceo'||c.depts.includes(e.dept);
+ const sEmps=emps.filter(inScopeEmp);
+ const visTask=t=>{if(c.role==='ceo')return true;const e=empX[t.emp];if(c.role==='employee'&&c.me&&t.emp===c.me.id)return true;return !!e&&c.depts.includes(e.dept);};
+ const sTasks=tasks.filter(visTask);
+ const projects=S.projs.map(p=>{
+  const pt=tasks.filter(t=>t.proj===p.id);const doneN=pt.filter(t=>t.done).length;
+  const W={todo:0,inprogress:.5,review:.8,done:1};
+  const progress=pt.length?Math.round(pt.reduce((a,t)=>a+(W[t.status]||0),0)/pt.length*100):0;
+  const nsN=pt.filter(t=>t.status==='todo').length,revN=pt.filter(t=>t.status==='review').length,ogN=pt.filter(t=>t.status==='inprogress').length+revN;
+  const a=dn(p.start),b=dn(p.deadline);
+  const expected=(isNaN(a)||isNaN(b))?0:Math.max(0,Math.min(100,Math.round((T0-a)/Math.max(1,b-a)*100)));
+  let key='ontrack';
+  if(pt.length&&doneN===pt.length)key='completed';
+  else if(!isNaN(b)&&T0>b)key='delayed';
+  else if(expected-progress>25)key='delayed';
+  else if(expected-progress>10)key='atrisk';
+  const left=b-T0;
+  const daysLabel=key==='completed'?'Closed':isNaN(left)?'No deadline':left<0?plural(-left,'day')+' past deadline':left===0?'Due today':plural(left,'day')+' left';
+  const owner=empById[p.owner];
+  return Object.assign({},p,{pt,doneN,nsN,ogN,revN,remainN:pt.length-doneN,progress,expected,key,st:PSTAT[key],daysLabel,ownerName:owner?owner.name:'No owner',ownerDept:owner?owner.dept:''});
+ });
+ const sProjects=c.role==='ceo'?projects:projects.filter(p=>p.pt.some(visTask)||c.depts.includes(p.ownerDept));
+ return {c,tasks,emps,empX,empById,projById,sEmps,sTasks,projects,sProjects,visTask};
+}
+/* permissions (UI-level) */
+function canAssignTo(M,e){const c=M.c;if(!e||!S.canWrite)return false;if(c.role==='ceo')return true;if(c.role==='leader')return c.depts.includes(e.dept);return !!c.me&&e.id===c.me.id;}
+function canEditTask(M,t){const c=M.c;if(!S.canWrite)return false;if(c.role==='ceo')return true;if(c.role==='leader'){const e=M.empX[t.emp];return !!e&&c.depts.includes(e.dept);}return !!c.me&&t.emp===c.me.id;}
+const canApprove=M=>S.canWrite&&M.c.role!=='employee';
+const canManagePeople=M=>S.canWrite&&M.c.role==='ceo';
+const canManageProjects=M=>S.canWrite&&M.c.role!=='employee';
+const canSettings=M=>S.canWrite&&M.c.role==='ceo';
+
+/* ---------- small renderers ---------- */
+const pill=st=>'<span class="pill t-'+st.tone+'"><span class="dot d-'+st.tone+'"></span>'+esc(st.label)+'</span>';
+const tagP=p=>'<span class="tag t-'+PRIO[p||'medium'].tone+'">'+PRIO[p||'medium'].label+'</span>';
+const av=(e,lg)=>'<span class="av'+(lg?' lg':'')+'">'+esc(initials(e.name))+(e.st?'<span class="dot d-'+e.st.tone+'"></span>':'')+'</span>';
+const who=(e,sub)=>'<span class="who">'+av(e)+'<span><b>'+esc(e.name)+'</b><span class="muted">'+esc(sub==null?e.dept:sub)+'</span></span></span>';
+const bar=(pct,tone,thick,mark)=>'<span class="bar'+(thick?' thick':'')+'"><i class="d-'+tone+'" style="width:'+Math.max(0,Math.min(100,pct))+'%"></i>'+(mark!=null?'<span class="mark" style="left:'+mark+'%"></span>':'')+'</span>';
+const loadCell=e=>'<span class="barrow">'+bar(e.loadPct,e.st.tone)+'<span class="num" style="width:62px;text-align:right">'+e.n+' / '+e.cap+'</span></span>';
+const stepper=(status,noLabel)=>{const i=STAGE_IDX[status]||0;const g=STAGES[i];let segs='';for(let k=0;k<4;k++)segs+='<i'+(k<=i?' class="d-'+g.tone+'"':'')+'></i>';return '<span class="steps" aria-label="Stage '+(i+1)+' of 4: '+g.label+'"><span class="seg4" aria-hidden="true">'+segs+'</span>'+(noLabel?'<span class="muted">'+g.label+'</span>':'<span class="pill t-'+g.tone+'">'+g.label+'</span>')+'</span>';};
+const segbar=p=>{const tot=p.pt.length||1;return '<span class="segbar" role="img" aria-label="'+p.nsN+' not started, '+p.ogN+' ongoing, '+p.doneN+' complete"><i class="d-g" style="width:'+(p.doneN/tot*100)+'%"></i><i class="d-b" style="width:'+(p.ogN/tot*100)+'%"></i>'+(p.pt.length?'<span class="mark" style="left:'+p.expected+'%"></span>':'')+'</span>';};
+const legend=p=>'<span class="legend num"><span><span class="dot d-g"></span>'+p.doneN+' complete</span><span><span class="dot d-b"></span>'+p.ogN+' ongoing'+(p.revN?' ('+p.revN+' in review)':'')+'</span><span><span class="dot d-n"></span>'+p.nsN+' not started</span></span>';
+const sel=(v,cur)=>v===cur?' selected':'';
+const pressed=b=>' aria-pressed="'+(b?'true':'false')+'"';
+
+/* ---------- page: dashboard ---------- */
+function rangeBounds(){const u=S.ui;if(u.range==='today')return [T0,T0];if(u.range==='week')return weekRange();if(u.range==='month')return monthRange(0);let a=dn(u.from),b=dn(u.to);if(isNaN(a))a=T0;if(isNaN(b))b=a;return a<=b?[a,b]:[b,a];}
+function attention(M){
+ const c=M.c,out=[];
+ const add=(sev,tone,tag,title,meta,act)=>out.push({sev,tone,tag,title,meta,act});
+ M.sTasks.forEach(t=>{
+  if(t.overdue)add(5,'r','Overdue',t.title+' is overdue by '+plural(-t.dd,'day'),t.empName+', '+t.projName,'task:'+t.id);
+  if(t.blocked)add(4,'r','Blocked',t.title+' is blocked','Waiting on '+t.blockedBy,'task:'+t.id);
+  if(t.status==='review'&&c.role!=='employee')add(3,'b','Approval',t.title+' is waiting for approval','From '+t.empName,'task:'+t.id);
+  else if(!t.done&&!t.overdue&&t.dd<=1)add(3,'a',t.dd===0?'Today':'Tomorrow',t.title+' is due '+(t.dd===0?'today':'tomorrow'),t.empName+', '+STAGE_LABEL[t.status].toLowerCase(),'task:'+t.id);
+ });
+ M.sEmps.forEach(e=>{
+  if(e.key==='overloaded')add(4,'r','Workload',e.name+' has '+e.n+' open tasks','Consider moving work to someone free','emp:'+e.id);
+  if(e.onLeave&&e.n)add(3,'a','Coverage',e.name+' is on leave with '+plural(e.n,'open task'),e.leaveNote||'Reassign or pause these tasks','emp:'+e.id);
+ });
+ M.sProjects.forEach(p=>{if(p.key==='delayed')add(4,'r','Schedule',p.name+' is behind schedule',p.doneN+' of '+p.pt.length+' tasks complete, '+p.expected+'% of time used','proj:'+p.id);});
+ return out.sort((a,b)=>b.sev-a.sev);
+}
+function attentionCard(M){
+ const att=attention(M);
+ return '<section class="card" aria-labelledby="h-att"><div class="spread"><h2 id="h-att">Needs attention</h2><span class="num '+(att.length?'c-r':'muted')+'">'+plural(att.length,'item')+'</span></div>'+
+ '<div class="stack" style="gap:2px;max-height:360px;overflow-y:auto">'+(att.length?att.map(a=>'<button type="button" class="list-btn" data-act="open" data-ref="'+esc(a.act)+'"><span class="dot d-'+a.tone+'" style="margin-top:5px"></span><span style="flex-grow:1;min-width:0"><span style="display:block;font-weight:500">'+esc(a.title)+'</span><span class="muted">'+esc(a.meta)+'</span></span><span class="tag t-'+a.tone+'">'+esc(a.tag)+'</span></button>').join(''):'<p class="empty">Nothing needs you right now.</p>')+'</div></section>';
+}
+function freeCard(M){
+ const free=M.sEmps.filter(e=>e.key==='free').sort((a,b)=>a.name.localeCompare(b.name));
+ const light=M.sEmps.filter(e=>!e.onLeave&&e.n>0&&e.key==='working').sort((a,b)=>a.n-b.n).slice(0,4);
+ const row=e=>'<tr><td><button type="button" class="linkish" data-act="open" data-ref="emp:'+e.id+'">'+who(e,e.role||'')+'</button></td><td>'+esc(e.dept)+'</td><td class="num">'+(e.n?plural(e.n,'open task'):'No open tasks')+'</td><td class="num">'+(e.next?esc(e.next.dueLabel):'—')+'</td><td style="text-align:right">'+(canAssignTo(M,e)?'<button type="button" class="btn sm outline" data-act="assign" data-emp="'+e.id+'">'+icon('plus',14)+'Assign</button>':'')+'</td></tr>';
+ return '<section class="card" id="free" aria-labelledby="h-free"><div class="spread"><div><h2 id="h-free">Free for new tasks</h2><p class="muted" style="margin-top:3px">No open tasks right now</p></div><span class="num muted">'+people(free.length)+'</span></div>'+
+ '<div class="tbl"><table><thead><tr><th>Employee</th><th>Department</th><th>Workload</th><th>Next due</th><th></th></tr></thead><tbody>'+
+ (free.length?free.map(row).join(''):'<tr><td colspan="5" class="empty">Nobody is completely free. The lightest loads are listed below.</td></tr>')+
+ '</tbody></table></div>'+
+ (light.length?'<div class="stack" style="gap:6px"><h3 style="font-size:13px;font-weight:600">Lightest loads next</h3><div class="tbl"><table><tbody>'+light.map(row).join('')+'</tbody></table></div></div>':'')+
+ '</section>';
+}
+function teamCard(M){
+ const u=S.ui;
+ const defs=[['all','All','k',()=>true],['free','Free','g',e=>e.key==='free'],['working','Working','b',e=>e.key==='working'||e.key==='almost'],['overloaded','Overloaded','r',e=>e.key==='overloaded'],['leave','On leave','n',e=>e.key==='leave']];
+ const d=defs.find(x=>x[0]===u.teamStatus)||defs[0];
+ const depts=M.c.role==='ceo'?allDepts():M.c.depts;
+ const order={overloaded:0,almost:1,working:2,free:3,leave:4};
+ const list=M.sEmps.filter(d[3]).filter(e=>u.teamDept==='All'||e.dept===u.teamDept).sort((a,b)=>order[a.key]-order[b.key]||b.n-a.n);
+ return '<section class="card" id="team" aria-labelledby="h-team"><div class="spread"><h2 id="h-team">Team availability</h2><div class="chips" role="group" aria-label="Status">'+
+ defs.map(x=>'<button type="button" class="chip" data-set="teamStatus" data-val="'+x[0]+'"'+pressed(u.teamStatus===x[0])+'><span class="dot d-'+x[2]+'"></span>'+x[1]+' <span class="num" style="opacity:.7">'+M.sEmps.filter(x[3]).length+'</span></button>').join('')+'</div></div>'+
+ (depts.length>1?'<div class="chips" role="group" aria-label="Department">'+['All'].concat(depts).map(x=>'<button type="button" class="chip sq" data-set="teamDept" data-val="'+esc(x)+'"'+pressed(u.teamDept===x)+'>'+esc(x)+'</button>').join('')+'</div>':'')+
+ '<div class="tbl"><table><thead><tr><th>Employee</th><th>Status</th><th>Current task</th><th>Open</th><th style="min-width:150px">Workload</th></tr></thead><tbody>'+
+ (list.length?list.map(e=>'<tr class="click" data-act="open" data-ref="emp:'+e.id+'"><td>'+who(e)+'</td><td>'+pill(e.st)+'</td><td style="max-width:320px">'+(e.cur?'<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.cur.title)+'</div><div style="margin-top:4px">'+stepper(e.cur.status)+'</div>':'<span class="muted">No open task</span>')+'</td><td class="num">'+e.n+'</td><td>'+loadCell(e)+'</td></tr>').join(''):'<tr><td colspan="5" class="empty">No one matches these filters.</td></tr>')+
+ '</tbody></table></div></section>';
+}
+function projectsCard(M,limit){
+ const ps=M.sProjects.slice().sort((a,b)=>({delayed:0,atrisk:1,ontrack:2,completed:3}[a.key]-{delayed:0,atrisk:1,ontrack:2,completed:3}[b.key]));
+ return '<section class="card" aria-labelledby="h-proj"><div class="spread"><h2 id="h-proj">Project overview</h2><button type="button" class="btn sm" data-act="nav" data-page="projects">All projects</button></div>'+
+ (ps.length?ps.slice(0,limit||99).map(p=>'<button type="button" class="list-btn" style="flex-direction:column;gap:7px;border-top:1px solid var(--line2);border-radius:0;padding:12px 4px" data-act="open" data-ref="proj:'+p.id+'"><span class="spread" style="width:100%"><span><b style="font-weight:600;display:block">'+esc(p.name)+'</b><span class="muted">'+esc(p.ownerName)+', due '+fd(p.deadline)+'</span></span>'+pill(p.st)+'</span><span class="barrow" style="width:100%">'+segbar(p)+'<span class="num" style="text-align:right;font-weight:600;white-space:nowrap">'+p.doneN+'/'+p.pt.length+'</span></span><span class="spread" style="width:100%">'+legend(p)+'<span class="num muted">'+esc(p.daysLabel)+'</span></span></button>').join(''):'<p class="empty">No projects yet.</p>')+
+ '<p class="muted">Green = complete, blue = ongoing (including review), grey = not started. The dark marker shows how much of the project’s time has passed.</p></section>';
+}
+function workloadCard(M){
+ const u=S.ui;const depts=M.c.role==='ceo'?allDepts():M.c.depts;
+ const list=M.sEmps.filter(e=>u.wlDept==='All'||e.dept===u.wlDept).sort((a,b)=>b.n-a.n);
+ const cap=+S.settings.capacity||5;const max=Math.max(cap+1,...list.map(e=>e.n));
+ return '<section class="card" aria-labelledby="h-wl"><h2 id="h-wl">Employee workload</h2>'+
+ (depts.length>1?'<div class="chips" role="group" aria-label="Department">'+['All'].concat(depts).map(x=>'<button type="button" class="chip sq" data-set="wlDept" data-val="'+esc(x)+'"'+pressed(u.wlDept===x)+'>'+esc(x)+'</button>').join('')+'</div>':'')+
+ '<div class="stack" style="gap:2px">'+list.map(e=>'<button type="button" class="list-btn" style="display:grid;grid-template-columns:120px minmax(0,1fr) 30px;align-items:center;padding:5px 6px" data-act="open" data-ref="emp:'+e.id+'"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.name)+'</span><span class="bar thick" style="height:14px;border-radius:4px"><i class="d-'+e.st.tone+'" style="width:'+(e.n/max*100)+'%;border-radius:4px"></i><span class="mark" style="left:'+(cap/max*100)+'%;opacity:.5"></span></span><span class="num '+(e.key==='overloaded'?'c-r':'')+'" style="text-align:right">'+e.n+'</span></button>').join('')+'</div>'+
+ '<p class="muted">Open tasks per person. Marker = '+cap+' tasks, the overload line.</p></section>';
+}
+function pipelineCard(M){
+ const u=S.ui;const [a,b]=rangeBounds();
+ const inR=M.sTasks.filter(t=>(t.dueN>=a&&t.dueN<=b)||(t.overdue&&a<=T0&&b>=T0));
+ const list=inR.filter(t=>t.status===u.stage).sort((x,y)=>x.dd-y.dd);
+ return '<section class="card" aria-labelledby="h-pipe"><div class="spread"><h2 id="h-pipe">Task progress</h2><span class="muted">Due '+(a===b?fd(ds(a)):fd(ds(a))+' to '+fd(ds(b)))+', overdue included</span></div>'+
+ '<div class="kpis k4" role="group" aria-label="Stage">'+STAGES.map(g=>'<button type="button" class="kpi" data-set="stage" data-val="'+g.k+'"'+pressed(u.stage===g.k)+' style="'+(u.stage===g.k?'border:2px solid var(--text);padding:14px 16px':'')+'"><span class="row" style="gap:7px"><span class="dot d-'+g.tone+'" style="border-radius:2px"></span>'+g.label+'</span><span class="v num">'+inR.filter(t=>t.status===g.k).length+'</span></button>').join('')+'</div>'+
+ taskTable(M,list,'No tasks in this stage for the period.')+'</section>';
+}
+function taskTable(M,list,emptyMsg,opts){
+ opts=opts||{};
+ return '<div class="tbl"><table><thead><tr>'+
+ (opts.sortable?'<th><button type="button" data-set="tSort" data-val="title">Task '+icon('sort',12)+'</button></th><th><button type="button" data-set="tSort" data-val="emp">Assigned to '+icon('sort',12)+'</button></th><th><button type="button" data-set="tSort" data-val="prio">Priority '+icon('sort',12)+'</button></th><th><button type="button" data-set="tSort" data-val="due">Due '+icon('sort',12)+'</button></th><th>Stage</th>':'<th>Task</th><th>Assigned to</th><th>Priority</th><th>Due</th><th>Stage</th>')+
+ '<th></th></tr></thead><tbody>'+
+ (list.length?list.map(t=>{
+  const st=STAGES.find(g=>g.k===t.status)||STAGES[0];
+  let quick='';
+  if(t.status==='review'&&canApprove(M)&&canEditTask(M,t))quick='<button type="button" class="btn sm outline" data-act="approve" data-id="'+t.id+'">Approve</button>';
+  else if(!t.done&&canEditTask(M,t)&&M.c.role==='employee'&&t.status!=='review')quick='<button type="button" class="btn sm" data-act="advance" data-id="'+t.id+'">'+(t.status==='todo'?'Start':'Send for review')+'</button>';
+  return '<tr class="click" data-act="open" data-ref="task:'+t.id+'"><td><div style="font-weight:500">'+esc(t.title)+(t.blocked?' <span class="tag t-r">Blocked</span>':'')+(t.repeat&&t.repeat!=='none'?' <span class="tag t-n">Repeats '+esc(t.repeat)+'</span>':'')+'</div><div class="muted">'+esc(t.projName)+'</div></td><td>'+esc(t.empName)+'</td><td>'+tagP(t.prio)+'</td><td class="num '+t.dueCls+'">'+esc(t.dueLabel)+'</td><td>'+stepper(t.status)+'</td><td style="text-align:right">'+quick+'</td></tr>';
+ }).join(''):'<tr><td colspan="6" class="empty">'+esc(emptyMsg)+'</td></tr>')+'</tbody></table></div>';
+}
+function pageDashboard(M){
+ const c=M.c;
+ if(c.role==='employee')return pageMyDay(M);
+ const E=M.sEmps,cnt=k=>E.filter(e=>e.key===k).length;
+ const overdue=M.sTasks.filter(t=>t.overdue);
+ const u=S.ui;
+ return '<div class="topbar"><div><h1 class="title">'+(c.role==='ceo'?'Company overview':esc(c.depts.length>1?c.depts.length+' departments':c.depts[0]||'Team')+' overview')+'</h1><p class="muted">'+DAYS[new Date(T0*864e5).getUTCDay()]+', '+fdy(TODAY)+'</p></div>'+
+ '<div class="row"><div class="seg" role="group" aria-label="Date range">'+[['today','Today'],['week','This week'],['month','This month'],['custom','Custom']].map(r=>'<button type="button" data-set="range" data-val="'+r[0]+'"'+pressed(u.range===r[0])+'>'+r[1]+'</button>').join('')+'</div>'+
+ (S.canWrite?'<button type="button" class="btn primary" data-act="assign">'+icon('plus',16)+'Assign task</button>':'')+'</div></div>'+
+ (u.range==='custom'?'<div class="card" style="flex-direction:row;flex-wrap:wrap;align-items:center;padding:12px 16px"><label for="rf">From</label><input id="rf" class="inp" style="width:auto" type="date" data-bind="from" value="'+esc(u.from)+'"><label for="rt">To</label><input id="rt" class="inp" style="width:auto" type="date" data-bind="to" value="'+esc(u.to)+'"><span class="muted">The date range changes Task progress only. Everything else shows right now.</span></div>':'')+
+ '<section class="kpis" aria-label="Summary">'+
+ '<button type="button" class="kpi big" data-act="scroll" data-to="free"><span>Free now</span><span class="v num">'+cnt('free')+'</span><span class="muted">no open tasks</span></button>'+
+ '<button type="button" class="kpi" data-act="nav" data-page="employees"><span class="muted">'+(c.role==='ceo'?'Total employees':'Team size')+'</span><span class="v num">'+E.length+'</span><span class="muted">'+cnt('leave')+' on leave</span></button>'+
+ '<button type="button" class="kpi" data-act="filterTeam" data-val="working"><span class="muted">Working</span><span class="v num" style="color:var(--b-fg)">'+(cnt('working')+cnt('almost'))+'</span><span class="muted">'+cnt('almost')+' almost full</span></button>'+
+ '<button type="button" class="kpi" data-act="filterTeam" data-val="overloaded"><span class="muted">Overloaded</span><span class="v num" style="color:var(--r-fg)">'+cnt('overloaded')+'</span><span class="muted">'+(+S.settings.capacity||5)+'+ open tasks</span></button>'+
+ '<button type="button" class="kpi" data-act="tasksFilter" data-val="inprogress"><span class="muted">Ongoing</span><span class="v num">'+M.sTasks.filter(t=>t.status==='inprogress').length+'</span><span class="muted">'+M.sTasks.filter(t=>t.status==='review').length+' in review</span></button>'+
+ '<button type="button" class="kpi" data-act="tasksFilter" data-val="overdue"><span class="muted">Overdue</span><span class="v num" style="color:var(--r-fg)">'+overdue.length+'</span><span class="muted">across '+plural(new Set(overdue.map(t=>t.proj)).size,'project')+'</span></button>'+
+ '</section>'+
+ freeCard(M)+
+ teamCard(M)+
+ '<div class="g2b">'+projectsCard(M,6)+workloadCard(M)+'</div>'+
+ pipelineCard(M);
+}
+function pageMyDay(M){
+ const me=M.c.me;if(!me)return emptyPage('Pick who you are','Use the role switcher at the top to choose an employee.');
+ const e=M.empX[me.id];const [wa,wb]=weekRange();
+ const mineOpen=e.open.slice().sort((a,b)=>a.dd-b.dd);
+ const teamT=M.sTasks.filter(t=>t.emp!==me.id&&!t.done).sort((a,b)=>a.dd-b.dd).slice(0,8);
+ const myProj=M.projects.filter(p=>p.pt.some(t=>t.emp===me.id));
+ return '<div class="topbar"><div><h1 class="title">My work</h1><p class="muted">'+esc(me.name)+', '+esc(me.dept)+'</p></div>'+(S.canWrite?'<button type="button" class="btn primary" data-act="assign" data-emp="'+me.id+'">'+icon('plus',16)+'Add my task</button>':'')+'</div>'+
+ '<section class="kpis k4"><div class="kpi big"><span>My open tasks</span><span class="v num">'+e.n+'</span><span class="muted">'+e.st.label+'</span></div>'+
+ '<div class="kpi"><span class="muted">Due this week</span><span class="v num">'+e.open.filter(t=>t.dueN>=wa&&t.dueN<=wb).length+'</span></div>'+
+ '<div class="kpi"><span class="muted">Overdue</span><span class="v num" style="color:var(--r-fg)">'+e.overdueN+'</span></div>'+
+ '<div class="kpi"><span class="muted">Waiting for approval</span><span class="v num">'+e.open.filter(t=>t.status==='review').length+'</span></div></section>'+
+ '<section class="card"><h2>My tasks</h2>'+taskTable(M,mineOpen,'You have no open tasks. Ask your leader for the next one.')+'</section>'+
+ '<div class="g2b"><section class="card"><h2>Team tasks in '+esc(me.dept)+'</h2>'+taskTable(M,teamT,'Your team has no open tasks.')+'</section>'+
+ '<section class="card"><h2>My projects</h2>'+(myProj.length?myProj.map(p=>'<button type="button" class="list-btn" style="flex-direction:column;gap:6px" data-act="open" data-ref="proj:'+p.id+'"><span class="spread" style="width:100%"><b style="font-weight:600">'+esc(p.name)+'</b>'+pill(p.st)+'</span><span class="barrow" style="width:100%">'+segbar(p)+'<span class="num">'+p.doneN+'/'+p.pt.length+'</span></span></button>').join(''):'<p class="empty">Not on any project yet.</p>')+'</section></div>';
+}
+
+/* ---------- page: departments ---------- */
+function pageDepartments(M){
+ const depts=M.c.role==='ceo'?allDepts():M.c.depts.slice().sort(deptSort);
+ const order={overloaded:0,almost:1,working:2,free:3,leave:4};
+ const cards=depts.map(d=>{
+  const members=M.emps.filter(e=>e.dept===d).sort((a,b)=>order[a.key]-order[b.key]||a.name.localeCompare(b.name));
+  const tasks=M.tasks.filter(t=>t.dept===d);
+  const open=tasks.filter(t=>!t.done);
+  const overdue=open.filter(t=>t.overdue).length,review=open.filter(t=>t.status==='review').length,blocked=open.filter(t=>t.blocked).length;
+  const leaders=M.emps.filter(e=>(e.leads||[]).includes(d));
+  const n=k=>members.filter(e=>e.key===k).length;
+  const segs=[['free','g'],['working','b'],['almost','a'],['overloaded','r'],['leave','n']].filter(x=>n(x[0]));
+  const tot=members.length||1;
+  const projs=M.projects.filter(p=>p.key!=='completed'&&p.pt.some(t=>t.dept===d));
+  const free=members.filter(e=>e.key==='free');
+  return '<section class="card" aria-labelledby="d-'+esc(d).replace(/[^a-z]/gi,'')+'">'+
+   '<div class="spread" style="align-items:flex-start"><div><h2 id="d-'+esc(d).replace(/[^a-z]/gi,'')+'">'+esc(d)+'</h2><p class="muted">Led by '+(leaders.length?esc(leaders.map(e=>e.name).join(', ')):'no leader set')+'</p></div><span class="num muted">'+people(members.length)+'</span></div>'+
+   '<span class="segbar" role="img" aria-label="'+segs.map(x=>n(x[0])+' '+STATUS[x[0]].label.toLowerCase()).join(', ')+'">'+segs.map(x=>'<i class="d-'+x[1]+'" style="width:'+(n(x[0])/tot*100)+'%"></i>').join('')+'</span>'+
+   '<span class="legend num">'+segs.map(x=>'<span><span class="dot d-'+x[1]+'"></span>'+n(x[0])+' '+STATUS[x[0]].label.toLowerCase()+'</span>').join('')+'</span>'+
+   '<div class="mini"><div><span class="muted">Open tasks</span><b class="num">'+open.length+'</b></div><div><span class="muted">Overdue</span><b class="num '+(overdue?'c-r':'')+'">'+overdue+'</b></div><div><span class="muted">In review</span><b class="num">'+review+'</b></div></div>'+
+   (blocked?'<p class="c-r" style="font-weight:500">'+plural(blocked,'task')+' blocked</p>':'')+
+   '<div class="row" style="gap:6px">'+members.map(e=>'<button type="button" class="linkish" data-act="open" data-ref="emp:'+e.id+'" title="'+esc(e.name)+', '+esc(e.st.label)+'" aria-label="'+esc(e.name)+', '+esc(e.st.label)+'">'+av(e)+'</button>').join('')+'</div>'+
+   (projs.length?'<p class="muted">Active projects: '+esc(projs.map(p=>p.name).join(', '))+'</p>':'')+
+   '<div class="row" style="margin-top:auto">'+
+   (free.length&&canAssignTo(M,free[0])?'<button type="button" class="btn sm outline" data-act="assign" data-emp="'+free[0].id+'">'+icon('plus',14)+'Assign to '+esc(free[0].name.split(' ')[0])+'</button>':'')+
+   '<button type="button" class="btn sm" data-act="deptPeople" data-dept="'+esc(d)+'">People</button><button type="button" class="btn sm" data-act="deptTasks" data-dept="'+esc(d)+'">Open tasks</button></div></section>';
+ }).join('');
+ return '<div class="topbar"><div><h1 class="title">Departments</h1><p class="muted">'+plural(depts.length,'department')+', who is free and what is open</p></div></div>'+
+ (depts.length?'<div class="pcards" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">'+cards+'</div>':emptyCard('No departments yet. Add employees with a department to see them here.'));
+}
+
+/* ---------- page: employees ---------- */
+function pageEmployees(M){
+ const u=S.ui,q=u.eq.trim().toLowerCase();const depts=M.c.role==='ceo'?allDepts():M.c.depts;
+ const st=[['all','All'],['free','Free'],['working','Working'],['almost','Almost full'],['overloaded','Overloaded'],['leave','On leave']];
+ const list=M.sEmps.filter(e=>(u.eDept==='All'||e.dept===u.eDept)&&(u.eStatus==='all'||e.key===u.eStatus)&&(!q||(e.name+' '+e.role+' '+e.dept).toLowerCase().includes(q))).sort((a,b)=>a.name.localeCompare(b.name));
+ return '<div class="topbar"><div><h1 class="title">Employees</h1><p class="muted">'+people(M.sEmps.length)+(M.c.role==='ceo'?' across '+plural(allDepts().length,'department'):' in '+esc(M.c.depts.join(' + ')))+'</p></div>'+(canManagePeople(M)?'<button type="button" class="btn primary" data-act="newEmp">'+icon('plus',16)+'Add employee</button>':'')+'</div>'+
+ '<section class="card"><div class="row"><label class="sr" for="eq">Search employees</label><input id="eq" class="inp" style="max-width:280px" type="search" placeholder="Search name, role or department" data-bind="eq" value="'+esc(u.eq)+'">'+
+ '<label class="sr" for="es">Status</label><select id="es" class="inp" style="width:auto" data-bind="eStatus">'+st.map(s=>'<option value="'+s[0]+'"'+sel(s[0],u.eStatus)+'>'+s[1]+'</option>').join('')+'</select></div>'+
+ (depts.length>1?'<div class="chips">'+['All'].concat(depts).map(x=>'<button type="button" class="chip sq" data-set="eDept" data-val="'+esc(x)+'"'+pressed(u.eDept===x)+'>'+esc(x)+'</button>').join('')+'</div>':'')+
+ '<div class="tbl"><table><thead><tr><th>Employee</th><th>Department</th><th>Status</th><th>Open</th><th>Overdue</th><th>Next due</th><th>Leads</th><th style="min-width:140px">Workload</th></tr></thead><tbody>'+
+ (list.length?list.map(e=>'<tr class="click" data-act="open" data-ref="emp:'+e.id+'"><td>'+who(e,e.role||'')+'</td><td>'+esc(e.dept)+'</td><td>'+pill(e.st)+'</td><td class="num">'+e.n+'</td><td class="num '+(e.overdueN?'c-r':'')+'">'+e.overdueN+'</td><td class="num">'+(e.next?'<span class="'+e.next.dueCls+'">'+esc(e.next.dueLabel)+'</span>':'—')+'</td><td>'+esc((e.leads||[]).join(' + ')||'—')+'</td><td>'+loadCell(e)+'</td></tr>').join(''):'<tr><td colspan="8" class="empty">No employees match. Clear the search or pick All.</td></tr>')+
+ '</tbody></table></div></section>';
+}
+
+/* ---------- page: tasks ---------- */
+function filteredTasks(M){
+ const u=S.ui,q=u.tq.trim().toLowerCase();
+ let l=M.sTasks.filter(t=>{
+  if(u.tStatus==='open'&&t.done)return false;
+  if(['todo','inprogress','review','done'].includes(u.tStatus)&&t.status!==u.tStatus)return false;
+  if(u.tStatus==='overdue'&&!t.overdue)return false;
+  if(u.tStatus==='blocked'&&!t.blocked)return false;
+  if(u.tDept!=='All'&&t.dept!==u.tDept)return false;
+  if(u.tProj!=='all'&&t.proj!==u.tProj)return false;
+  if(u.tEmp!=='all'&&t.emp!==u.tEmp)return false;
+  if(u.tPrio!=='all'&&t.prio!==u.tPrio)return false;
+  if(q&&!(t.title+' '+t.empName+' '+t.projName).toLowerCase().includes(q))return false;
+  return true;});
+ const s=u.tSort;
+ l.sort((a,b)=>s==='title'?a.title.localeCompare(b.title):s==='emp'?a.empName.localeCompare(b.empName):s==='prio'?(PRIO[a.prio||'medium'].rank-PRIO[b.prio||'medium'].rank)||(a.dd-b.dd):(a.dd-b.dd));
+ return l;
+}
+function pageTasks(M){
+ const u=S.ui;const list=filteredTasks(M);
+ const emps=M.sEmps.slice().sort((a,b)=>a.name.localeCompare(b.name));
+ const statusOpts=[['open','Open tasks'],['all','All tasks'],['todo','Not started'],['inprogress','Ongoing'],['review','In review'],['done','Complete'],['overdue','Overdue'],['blocked','Blocked']];
+ const board=u.tView==='board';
+ let body;
+ if(board){
+  const bl=list.filter(t=>u.tStatus==='open'?true:true);
+  const showDone=u.tStatus!=='open';
+  body='<div class="board">'+STAGES.map(g=>{
+   const items=(g.k==='done'&&!showDone)?M.sTasks.filter(t=>t.done&&list.length>=0&&passesNonStatus(M,t)).slice(-6):bl.filter(t=>t.status===g.k);
+   return '<div class="col"><div class="spread"><span class="row" style="gap:7px;font-weight:600"><span class="dot d-'+g.tone+'"></span>'+g.label+'</span><span class="num muted">'+items.length+'</span></div>'+
+   (items.length?items.map(t=>boardCard(M,t)).join(''):'<p class="muted" style="padding:6px">Nothing here.</p>')+'</div>';}).join('')+'</div>';
+ } else body=taskTable(M,list,'No tasks match these filters.',{sortable:true});
+ return '<div class="topbar"><div><h1 class="title">Tasks</h1><p class="muted">'+plural(list.length,'task')+' shown</p></div><div class="row"><div class="seg" role="group" aria-label="View"><button type="button" data-set="tView" data-val="list"'+pressed(!board)+'>List</button><button type="button" data-set="tView" data-val="board"'+pressed(board)+'>Board</button></div>'+(S.canWrite?'<button type="button" class="btn primary" data-act="assign"'+(M.c.role==='employee'&&M.c.me?' data-emp="'+M.c.me.id+'"':'')+'>'+icon('plus',16)+'New task</button>':'')+'</div></div>'+
+ '<section class="card"><div class="row">'+
+ '<label class="sr" for="tq">Search tasks</label><input id="tq" class="inp" style="max-width:260px" type="search" placeholder="Search tasks" data-bind="tq" value="'+esc(u.tq)+'">'+
+ selBox('ts','Status','tStatus',statusOpts,u.tStatus)+
+ ((M.c.role==='ceo'?allDepts():M.c.depts).length>1?selBox('td','Department','tDept',[['All','All departments']].concat((M.c.role==='ceo'?allDepts():M.c.depts).map(d=>[d,d])),u.tDept):'')+
+ selBox('tp','Project','tProj',[['all','All projects']].concat(M.sProjects.map(p=>[p.id,p.name])),u.tProj)+
+ selBox('te','Assignee','tEmp',[['all','Everyone']].concat(emps.map(e=>[e.id,e.name])),u.tEmp)+
+ selBox('tr','Priority','tPrio',[['all','Any priority'],['high','High'],['medium','Medium'],['low','Low']],u.tPrio)+
+ ((u.tq||u.tStatus!=='open'||u.tDept!=='All'||u.tProj!=='all'||u.tEmp!=='all'||u.tPrio!=='all')?'<button type="button" class="btn sm" data-act="clearTaskFilters">Clear filters</button>':'')+
+ '</div>'+body+'</section>';
+}
+function passesNonStatus(M,t){const u=S.ui,q=u.tq.trim().toLowerCase();if(!M.visTask(t))return false;if(u.tDept!=='All'&&t.dept!==u.tDept)return false;if(u.tProj!=='all'&&t.proj!==u.tProj)return false;if(u.tEmp!=='all'&&t.emp!==u.tEmp)return false;if(u.tPrio!=='all'&&t.prio!==u.tPrio)return false;if(q&&!(t.title+' '+t.empName+' '+t.projName).toLowerCase().includes(q))return false;return true;}
+function selBox(id,label,key,opts,cur){return '<label class="sr" for="'+id+'">'+label+'</label><select id="'+id+'" class="inp" style="width:auto;max-width:200px" data-bind="'+key+'">'+opts.map(o=>'<option value="'+esc(o[0])+'"'+sel(o[0],cur)+'>'+esc(o[1])+'</option>').join('')+'</select>';}
+function boardCard(M,t){
+ const can=canEditTask(M,t);const idx=STAGES.findIndex(g=>g.k===t.status);
+ const empAllowed=k=>M.c.role!=='employee'||k!=='done';
+ const prev=idx>0&&empAllowed(STAGES[idx-1].k)?STAGES[idx-1]:null;
+ const next=idx<3&&empAllowed(STAGES[idx+1].k)?STAGES[idx+1]:null;
+ return '<div class="tcard"><button type="button" class="linkish" data-act="open" data-ref="task:'+t.id+'"><span class="ttl">'+esc(t.title)+'</span></button>'+
+ '<div class="row" style="gap:6px">'+tagP(t.prio)+(t.blocked?'<span class="tag t-r">Blocked</span>':'')+'<span class="num '+t.dueCls+'">'+esc(t.dueLabel)+'</span></div>'+
+ '<div class="muted">'+esc(t.empName)+', '+esc(t.projName)+'</div>'+
+ (can?'<div class="spread">'+(prev&&!t.done?'<button type="button" class="btn sm" data-act="move" data-id="'+t.id+'" data-to="'+prev.k+'" aria-label="Move to '+prev.label+'">'+icon('left',14)+'</button>':'<span></span>')+(next?'<button type="button" class="btn sm" data-act="move" data-id="'+t.id+'" data-to="'+next.k+'">'+(next.k==='done'?'Approve':next.label)+' '+icon('right',14)+'</button>':'')+'</div>':'')+
+ '</div>';
+}
+
+/* ---------- page: projects ---------- */
+function pageProjects(M){
+ const u=S.ui;const ps=M.sProjects.filter(p=>u.pStatus==='all'||p.key===u.pStatus);
+ return '<div class="topbar"><div><h1 class="title">Projects</h1><p class="muted">'+plural(M.sProjects.length,'project')+'</p></div>'+(canManageProjects(M)?'<button type="button" class="btn primary" data-act="newProj">'+icon('plus',16)+'New project</button>':'')+'</div>'+
+ '<div class="chips" role="group" aria-label="Project status">'+[['all','All']].concat(Object.keys(PSTAT).map(k=>[k,PSTAT[k].label])).map(x=>'<button type="button" class="chip" data-set="pStatus" data-val="'+x[0]+'"'+pressed(u.pStatus===x[0])+'>'+(x[0]!=='all'?'<span class="dot d-'+PSTAT[x[0]].tone+'"></span>':'')+x[1]+' <span class="num" style="opacity:.7">'+M.sProjects.filter(p=>x[0]==='all'||p.key===x[0]).length+'</span></button>').join('')+'</div>'+
+ (ps.length?'<div class="pcards">'+ps.map(p=>{
+   const team=Array.from(new Set(p.pt.map(t=>t.emp))).map(id=>M.empX[id]).filter(Boolean);
+   return '<button type="button" class="pcard" data-act="open" data-ref="proj:'+p.id+'"><span class="spread" style="width:100%"><b style="font-size:15px;font-weight:600">'+esc(p.name)+'</b>'+pill(p.st)+'</span>'+
+   '<span class="muted">'+esc(p.desc||'No description yet.')+'</span>'+
+   '<span class="barrow">'+segbar(p)+'<span class="num" style="font-weight:600">'+p.doneN+'/'+p.pt.length+'</span></span>'+
+   '<span class="spread" style="width:100%">'+legend(p)+'<span class="num '+(p.key==='delayed'?'c-r':'muted')+'">'+esc(p.daysLabel)+'</span></span>'+
+   '<span class="spread" style="width:100%"><span class="muted">Lead: '+esc(p.ownerName)+'</span><span class="row" style="gap:0">'+team.slice(0,5).map(e=>'<span class="av" style="width:28px;height:28px;margin-left:-6px;font-size:11px">'+esc(initials(e.name))+'</span>').join('')+'</span></span></button>';}).join('')+'</div>':emptyCard('No projects with this status.'));
+}
+
+/* ---------- page: calendar ---------- */
+function pageCalendar(M){
+ const u=S.ui;const [y,m]=u.calMonth.split('-').map(Number);
+ const first=Math.round(Date.UTC(y,m-1,1)/864e5);const last=Math.round(Date.UTC(y,m,0)/864e5);
+ const dow=new Date(first*864e5).getUTCDay();const start=first-((dow+6)%7);
+ const endDow=new Date(last*864e5).getUTCDay();const end=last+(6-((endDow+6)%7));
+ const byDay={};M.sTasks.forEach(t=>{if(!isNaN(t.dueN)){(byDay[t.dueN]=byDay[t.dueN]||[]).push(t);}});
+ let cells='';
+ for(let d=start;d<=end;d++){
+  const list=(byDay[d]||[]).slice().sort((a,b)=>(a.done-b.done)||PRIO[a.prio||'medium'].rank-PRIO[b.prio||'medium'].rank);
+  const s=ds(d),out=d<first||d>last;
+  cells+='<button type="button" class="day'+(out?' out':'')+(d===T0?' today':'')+'" data-set="calDay" data-val="'+s+'"'+pressed(u.calDay===s)+' aria-label="'+fdy(s)+', '+plural(list.length,'task')+'"><span class="dnum num">'+(+s.slice(8))+'</span>'+
+  list.slice(0,3).map(t=>'<span class="ev t-'+(t.overdue?'r':t.done?'g':t.status==='review'?'a':'b')+'">'+esc(t.title)+'</span>').join('')+(list.length>3?'<span class="muted" style="font-size:12px">+'+(list.length-3)+' more</span>':'')+'</button>';
+ }
+ const dayList=(byDay[dn(u.calDay)]||[]).slice().sort((a,b)=>PRIO[a.prio||'medium'].rank-PRIO[b.prio||'medium'].rank);
+ const canAdd=S.canWrite;
+ return '<div class="topbar"><div><h1 class="title">Calendar</h1><p class="muted">Task due dates</p></div><div class="row"><button type="button" class="icon-btn" data-act="calShift" data-val="-1" aria-label="Previous month">'+icon('left')+'</button><b style="min-width:140px;text-align:center;font-size:15px">'+MONL[m-1]+' '+y+'</b><button type="button" class="icon-btn" data-act="calShift" data-val="1" aria-label="Next month">'+icon('right')+'</button><button type="button" class="btn" data-act="calToday">Today</button></div></div>'+
+ '<div class="row" style="gap:14px"><span class="row" style="gap:6px"><span class="dot d-b"></span>Not started or ongoing</span><span class="row" style="gap:6px"><span class="dot d-a"></span>In review</span><span class="row" style="gap:6px"><span class="dot d-r"></span>Overdue</span><span class="row" style="gap:6px"><span class="dot d-g"></span>Completed</span></div>'+
+ '<div class="cal">'+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>'<div class="hd">'+d+'</div>').join('')+cells+'</div>'+
+ '<section class="card"><div class="spread"><h2>'+fdy(u.calDay)+'</h2>'+(canAdd?'<button type="button" class="btn sm outline" data-act="assign" data-due="'+u.calDay+'"'+(M.c.role==='employee'&&M.c.me?' data-emp="'+M.c.me.id+'"':'')+'>'+icon('plus',14)+'Task on this day</button>':'')+'</div>'+taskTable(M,dayList,'Nothing due on this day.')+'</section>';
+}
+
+/* ---------- page: reports ---------- */
+function periodBounds(){const p=S.ui.rPeriod;if(p==='week')return weekRange();if(p==='30')return [T0-29,T0];if(p==='quarter')return quarterRange();if(p==='last')return monthRange(-1);return monthRange(0);}
+function reportData(M){
+ const [a,b]=periodBounds();
+ const inP=t=>{const c=dn(t.completedAt);return t.done&&!isNaN(c)&&c>=a&&c<=b;};
+ const per=list=>{const done=list.filter(inP);const onTime=done.filter(t=>dn(t.completedAt)<=t.dueN).length;
+  return {done:done.length,onTime,rate:done.length?Math.round(onTime/done.length*100):null,open:list.filter(t=>!t.done).length,overdue:list.filter(t=>t.overdue).length,dueIn:list.filter(t=>t.dueN>=a&&t.dueN<=b).length};};
+ const depts=(M.c.role==='ceo'?allDepts():M.c.depts).map(d=>{const people=M.sEmps.filter(e=>e.dept===d);const list=M.sTasks.filter(t=>t.dept===d);return Object.assign({name:d,people:people.length,free:people.filter(e=>e.key==='free').length},per(list));});
+ const people=M.sEmps.map(e=>Object.assign({e},per(e.mine))).sort((x,y)=>y.done-x.done||x.e.name.localeCompare(y.e.name));
+ return {a,b,all:per(M.sTasks),depts,people};
+}
+function pageReports(M){
+ if(M.c.role==='employee')return emptyPage('Reports are for leaders','Switch to a leader or CEO view to see team reports.');
+ const R=reportData(M);const u=S.ui;
+ const maxDone=Math.max(1,...R.people.map(p=>p.done));
+ return '<div class="topbar"><div><h1 class="title">Reports</h1><p class="muted">'+fdy(ds(R.a))+' to '+fdy(ds(R.b))+'</p></div><div class="row"><div class="seg" role="group" aria-label="Period">'+[['week','This week'],['month','This month'],['last','Last month'],['30','Last 30 days'],['quarter','This quarter']].map(x=>'<button type="button" data-set="rPeriod" data-val="'+x[0]+'"'+pressed(u.rPeriod===x[0])+'>'+x[1]+'</button>').join('')+'</div>'+(S.downloads?'<button type="button" class="btn" data-act="exportCsv">'+icon('dl',16)+'Export CSV</button>':'')+'</div></div>'+
+ '<section class="kpis k4"><div class="kpi big"><span>Completed in period</span><span class="v num">'+R.all.done+'</span><span class="muted">'+R.all.dueIn+' were due in this period</span></div>'+
+ '<div class="kpi"><span class="muted">On-time rate</span><span class="v num">'+(R.all.rate==null?'—':R.all.rate+'%')+'</span><span class="muted">done by the due date</span></div>'+
+ '<div class="kpi"><span class="muted">Open now</span><span class="v num">'+R.all.open+'</span><span class="muted">'+(M.sEmps.length?(R.all.open/M.sEmps.length).toFixed(1):'0')+' per person</span></div>'+
+ '<div class="kpi"><span class="muted">Overdue now</span><span class="v num" style="color:var(--r-fg)">'+R.all.overdue+'</span></div></section>'+
+ '<section class="card"><h2>By department</h2><div class="tbl"><table><thead><tr><th>Department</th><th>People</th><th>Free now</th><th>Open</th><th>Completed</th><th>On time</th><th>Overdue</th></tr></thead><tbody>'+
+ R.depts.map(d=>'<tr><td style="font-weight:600">'+esc(d.name)+'</td><td class="num">'+d.people+'</td><td class="num">'+d.free+'</td><td class="num">'+d.open+'</td><td class="num">'+d.done+'</td><td class="num">'+(d.rate==null?'—':d.rate+'%')+'</td><td class="num '+(d.overdue?'c-r':'')+'">'+d.overdue+'</td></tr>').join('')+'</tbody></table></div></section>'+
+ '<section class="card"><h2>By employee</h2><div class="tbl"><table><thead><tr><th>Employee</th><th style="min-width:200px">Completed in period</th><th>On time</th><th>Open</th><th>Overdue</th><th>Status</th></tr></thead><tbody>'+
+ R.people.map(p=>'<tr class="click" data-act="open" data-ref="emp:'+p.e.id+'"><td>'+who(p.e)+'</td><td><span class="barrow">'+bar(p.done/maxDone*100,'g',true)+'<span class="num" style="width:24px;text-align:right">'+p.done+'</span></span></td><td class="num">'+(p.rate==null?'—':p.rate+'%')+'</td><td class="num">'+p.open+'</td><td class="num '+(p.overdue?'c-r':'')+'">'+p.overdue+'</td><td>'+pill(p.e.st)+'</td></tr>').join('')+'</tbody></table></div></section>';
+}
+
+/* ---------- page: settings ---------- */
+function pageSettings(M){
+ const cap=+S.settings.capacity||5,al=+S.settings.almost||4;const edit=canSettings(M);
+ const leaders=S.emps.filter(e=>(e.leads||[]).length);
+ return '<div class="topbar"><div><h1 class="title">Settings</h1><p class="muted">Rules shared by everyone using this app</p></div></div>'+
+ '<div class="g2b"><section class="card"><h2>Availability rules</h2>'+
+ '<form class="stack" data-form="settings" style="gap:14px"><p class="muted">Free means no open tasks, matching how the Lark Bases mark someone as available. Open = not started, ongoing or in review.</p>'+
+ '<div class="fgrid"><div class="field"><label for="s-al">Almost full at</label><input id="s-al" name="almost" class="inp num" type="number" min="1" max="20" value="'+al+'"'+(edit?'':' disabled')+'><span class="help">open tasks</span></div>'+
+ '<div class="field"><label for="s-cap">Overloaded at</label><input id="s-cap" name="capacity" class="inp num" type="number" min="2" max="30" value="'+cap+'"'+(edit?'':' disabled')+'><span class="help">open tasks</span></div></div>'+
+ '<div class="stack" style="gap:6px">'+[['free','0 open tasks'],['working','1 to '+(al-1)+' open tasks'],['almost',al+(cap-1>al?' to '+(cap-1):'')+' open tasks'],['overloaded',cap+' or more open tasks'],['leave','Marked on leave, any tasks']].map(x=>'<div class="row">'+pill(STATUS[x[0]])+'<span class="muted">'+x[1]+'</span></div>').join('')+'</div>'+
+ (edit?'<div><button type="submit" class="btn primary">Save rules</button></div>':'<p class="muted">Only the CEO view can change these rules.</p>')+'</form></section>'+
+ '<section class="card"><h2>Departments and leaders</h2><div class="tbl"><table style="min-width:0"><thead><tr><th>Department</th><th>People</th><th>Leader</th></tr></thead><tbody>'+
+ allDepts().map(d=>{const ls=leaders.filter(e=>(e.leads||[]).includes(d));return '<tr><td style="font-weight:600">'+esc(d)+'</td><td class="num">'+S.emps.filter(e=>e.dept===d).length+'</td><td>'+(ls.length?ls.map(e=>esc(e.name)).join(', '):'<span class="muted">None set</span>')+'</td></tr>';}).join('')+
+ '</tbody></table></div><p class="muted">Set leaders from an employee’s profile. A division head can lead more than one department.</p></section></div>'+
+ '<section class="card"><h2>Who can do what</h2><div class="tbl"><table><thead><tr><th>Action</th><th>CEO</th><th>Leader</th><th>Employee</th></tr></thead><tbody>'+
+ [['See every department','Yes','Own departments','Own department'],['Assign and edit tasks','Anyone','People in own departments','Own tasks only'],['Approve work in review','Yes','Own departments','No'],['Mark own task done','Yes','Yes','Sends for review'],['Create projects','Yes','Yes','No'],['Manage employees','Yes','Toggle leave','No'],['Change availability rules','Yes','No','No']].map(r=>'<tr>'+r.map((c,i)=>i?'<td>'+c+'</td>':'<td style="font-weight:500">'+c+'</td>').join('')+'</tr>').join('')+
+ '</tbody></table></div><p class="muted">The role switcher is a prototype stand-in for Lark sign-in. In the real build, each person’s role comes from their Lark account.</p></section>'+
+ '<section class="card"><h2>Data</h2><p>'+(S.db?'Connected to shared data. Changes appear for everyone who opens this page.':'Shared data is not connected in this view, so nothing can be saved.')+'</p><p class="muted num">'+S.emps.length+' employees, '+S.projs.length+' projects, '+S.tasks.length+' tasks</p>'+(S.canWrite?'':'<p class="muted">You have view-only access.</p>')+'</section>';
+}
+function emptyPage(t,m){return '<div class="card" style="align-items:flex-start;padding:28px"><h1 class="title">'+esc(t)+'</h1><p class="muted">'+esc(m)+'</p></div>';}
+const emptyCard=m=>'<div class="card"><p class="muted">'+esc(m)+'</p></div>';
+
+/* ---------- drawers & modals ---------- */
+function drawerEmp(M,id){
+ const e=M.empX[id];if(!e)return '';
+ const current=e.open.filter(t=>t.status!=='todo').sort((a,b)=>a.dd-b.dd);
+ const upcoming=e.open.filter(t=>t.status==='todo').sort((a,b)=>a.dd-b.dd);
+ const done=e.mine.filter(t=>t.done).sort((a,b)=>(dn(b.completedAt)||0)-(dn(a.completedAt)||0)).slice(0,8);
+ const projs=Array.from(new Set(e.mine.map(t=>t.projName)));
+ const tl=(arr,empty,showBar)=>arr.length?arr.map(t=>'<button type="button" class="list-btn" style="flex-direction:column;gap:5px;border:1px solid var(--line2);margin-bottom:6px" data-act="open" data-ref="task:'+t.id+'"><span class="spread" style="width:100%"><span style="font-weight:500">'+esc(t.title)+'</span><span class="num '+t.dueCls+'">'+esc(t.done?fd(t.completedAt||t.due):t.dueLabel)+'</span></span><span class="muted">'+esc(t.projName)+', '+STAGE_LABEL[t.status]+(t.blocked?', blocked by '+esc(t.blockedBy):'')+'</span>'+(showBar?stepper(t.status,true):'')+'</button>').join(''):'<p class="muted">'+empty+'</p>';
+ const leader=M.c.role==='leader'&&M.c.depts.includes(e.dept)&&S.canWrite;
+ return '<aside class="drawer" aria-label="Employee details"><div class="spread" style="align-items:flex-start"><div class="who">'+av(e,true)+'<span><b style="font-size:15px">'+esc(e.name)+'</b><span class="muted">'+esc(e.role||'')+', '+esc(e.dept)+'</span></span></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">'+icon('x',16)+'</button></div>'+
+ '<div class="mini"><div><span class="muted">Status</span><span style="font-weight:600;color:var(--'+e.st.tone+'-fg)">'+e.st.label+'</span></div><div><span class="muted">Open tasks</span><span class="num" style="font-weight:600">'+e.n+' of '+e.cap+'</span></div><div><span class="muted">Next due</span><span class="num '+(e.next?e.next.dueCls:'')+'" style="font-weight:600">'+(e.next?esc(e.next.dueLabel):'—')+'</span></div></div>'+
+ (e.onLeave?'<div class="banner t-n">On leave'+(e.leaveNote?': '+esc(e.leaveNote):'')+'</div>':'')+
+ '<div class="stack" style="gap:4px"><span class="muted">Projects</span><span>'+esc(projs.join(', ')||'None yet')+'</span>'+((e.leads||[]).length?'<span class="muted" style="margin-top:6px">Leads</span><span>'+esc(e.leads.join(' + '))+'</span>':'')+'</div>'+
+ '<div class="stack" style="gap:6px"><h3 style="font-size:13px;font-weight:600">Current <span class="muted num" style="font-weight:400">'+current.length+'</span></h3>'+tl(current,'Nothing in progress.',true)+'</div>'+
+ '<div class="stack" style="gap:6px"><h3 style="font-size:13px;font-weight:600">Upcoming <span class="muted num" style="font-weight:400">'+upcoming.length+'</span></h3>'+tl(upcoming,'No upcoming tasks.')+'</div>'+
+ '<div class="stack" style="gap:6px"><h3 style="font-size:13px;font-weight:600">Recently completed <span class="muted num" style="font-weight:400">'+e.mine.filter(t=>t.done).length+'</span></h3>'+tl(done,'No completed tasks yet.')+'</div>'+
+ '<div class="row" style="margin-top:auto">'+(canAssignTo(M,e)&&!e.onLeave?'<button type="button" class="btn primary" style="flex-grow:1" data-act="assign" data-emp="'+e.id+'">Assign a task to '+esc(e.name.split(' ')[0])+'</button>':'')+
+ (canManagePeople(M)?'<button type="button" class="btn" data-act="editEmp" data-id="'+e.id+'">Edit profile</button>':'')+
+ ((canManagePeople(M)||leader)?'<button type="button" class="btn" data-act="toggleLeave" data-id="'+e.id+'">'+(e.onLeave?'Mark back at work':'Mark on leave')+'</button>':'')+'</div></aside>';
+}
+function drawerProj(M,id){
+ const p=M.projects.find(x=>x.id===id);if(!p)return '';
+ const order={inprogress:0,review:1,todo:2,done:3};
+ const pt=p.pt.slice().sort((a,b)=>order[a.status]-order[b.status]||a.dd-b.dd);
+ return '<aside class="drawer" aria-label="Project details"><div class="spread" style="align-items:flex-start"><div><b style="font-size:15px;display:block">'+esc(p.name)+'</b><span class="muted">Lead: '+esc(p.ownerName)+'</span></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">'+icon('x',16)+'</button></div>'+
+ '<div class="row">'+pill(p.st)+'<span class="muted">'+esc(p.daysLabel)+'</span></div>'+
+ (p.desc?'<p>'+esc(p.desc)+'</p>':'')+
+ '<div class="stack" style="gap:6px"><span class="barrow">'+segbar(p)+'<span class="num" style="font-weight:600">'+p.doneN+'/'+p.pt.length+'</span></span>'+legend(p)+'<span class="muted">'+p.expected+'% of the time from '+fd(p.start)+' to '+fd(p.deadline)+' has passed (dark marker)</span></div>'+
+ '<div class="mini"><div><span class="muted">Done</span><b class="num">'+p.doneN+'</b></div><div><span class="muted">Remaining</span><b class="num">'+p.remainN+'</b></div><div><span class="muted">Overdue</span><b class="num '+(p.pt.some(t=>t.overdue)?'c-r':'')+'">'+p.pt.filter(t=>t.overdue).length+'</b></div></div>'+
+ '<div class="stack" style="gap:6px"><h3 style="font-size:13px;font-weight:600">Tasks</h3>'+(pt.length?pt.map(t=>'<button type="button" class="list-btn" style="border:1px solid var(--line2)" data-act="open" data-ref="task:'+t.id+'"><span class="dot d-'+(STAGES.find(g=>g.k===t.status)||STAGES[0]).tone+'" style="margin-top:5px"></span><span style="flex-grow:1"><span style="display:block;font-weight:500">'+esc(t.title)+'</span><span class="muted">'+esc(t.empName)+', '+STAGE_LABEL[t.status]+'</span></span><span class="num '+t.dueCls+'">'+esc(t.done?'Done':t.dueLabel)+'</span></button>').join(''):'<p class="muted">No tasks yet. Add the first one.</p>')+'</div>'+
+ '<div class="row" style="margin-top:auto">'+(S.canWrite&&M.c.role!=='employee'?'<button type="button" class="btn primary" style="flex-grow:1" data-act="assign" data-proj="'+p.id+'">'+icon('plus',16)+'Add task</button>':'')+(canManageProjects(M)?'<button type="button" class="btn" data-act="editProj" data-id="'+p.id+'">Edit project</button>':'')+'</div></aside>';
+}
+function modalTask(M,L){
+ const t=L.id?M.tasks.find(x=>x.id===L.id):null;
+ if(L.id&&!t)return '';
+ const editable=!t||canEditTask(M,t);
+ const isEmp=M.c.role==='employee';
+ const limited=t&&isEmp;
+ const f=Object.assign({title:'',emp:'',proj:'',prio:'medium',due:ds(T0+7),status:'todo',progress:0,blockedBy:'',repeat:'none',notes:''},t||{},L.preset||{});
+ const assignable=M.emps.filter(e=>canAssignTo(M,e)||(t&&e.id===t.emp)).sort((a,b)=>(a.onLeave-b.onLeave)||a.n-b.n||a.name.localeCompare(b.name));
+ const statuses=STAGES.filter(g=>!isEmp||g.k!=='done'||f.status==='done');
+ const dis=editable?'':' disabled';
+ const lim=limited||!editable?' disabled':'';
+ return '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="spread"><h2 id="mt" style="font-size:15px">'+(t?(editable?'Edit task':'Task details'):'New task')+'</h2><button type="button" class="icon-btn" data-act="close" aria-label="Close">'+icon('x',16)+'</button></div>'+
+ '<form class="stack" style="gap:14px" data-form="task" data-id="'+(t?t.id:'')+'" novalidate>'+
+ '<div class="field"><label for="f-title">Task</label><input id="f-title" name="title" class="inp" required maxlength="140" value="'+esc(f.title)+'" placeholder="e.g. Draft BESS case study"'+lim+'><span class="err" id="f-title-err" hidden>Give the task a name.</span></div>'+
+ '<div class="field"><label for="f-emp">Assign to</label><select id="f-emp" name="emp" class="inp"'+lim+'><option value="">Choose a person</option>'+assignable.map(e=>'<option value="'+e.id+'"'+sel(e.id,f.emp)+'>'+esc(e.name)+' ('+esc(e.dept)+'), '+(e.onLeave?'on leave':e.n===0?'free':e.n+' open')+'</option>').join('')+'</select><span class="help">Sorted by fewest open tasks.</span><span class="err" id="f-emp-err" hidden>Pick who should do this.</span></div>'+
+ '<div class="fgrid"><div class="field"><label for="f-proj">Project</label><select id="f-proj" name="proj" class="inp"'+lim+'><option value="">No project</option>'+M.projects.filter(p=>p.key!=='completed'||p.id===f.proj).map(p=>'<option value="'+p.id+'"'+sel(p.id,f.proj)+'>'+esc(p.name)+'</option>').join('')+'</select></div>'+
+ '<div class="field"><label for="f-due">Due date</label><input id="f-due" name="due" class="inp" type="date" value="'+esc(f.due)+'"'+lim+'></div>'+
+ '<div class="field"><label for="f-prio">Priority</label><select id="f-prio" name="prio" class="inp"'+lim+'>'+Object.keys(PRIO).map(k=>'<option value="'+k+'"'+sel(k,f.prio)+'>'+PRIO[k].label+'</option>').join('')+'</select></div>'+
+ '<div class="field"><label for="f-rep">Repeats</label><select id="f-rep" name="repeat" class="inp"'+lim+'>'+[['none','Does not repeat'],['weekly','Every week'],['monthly','Every month']].map(o=>'<option value="'+o[0]+'"'+sel(o[0],f.repeat||'none')+'>'+o[1]+'</option>').join('')+'</select></div>'+
+ '</div><fieldset class="field" style="border:0;padding:0;margin:0"><legend class="lbl" style="margin-bottom:6px">Stage</legend><div class="stagepick">'+STAGES.map(g=>{const off=!editable||(isEmp&&g.k==='done'&&f.status!=='done');return '<label class="stageopt'+(off?' off':'')+'"><input type="radio" name="status" value="'+g.k+'"'+(f.status===g.k?' checked':'')+(off?' disabled':'')+'><span class="dot d-'+g.tone+'"></span>'+g.label+'</label>';}).join('')+'</div>'+(isEmp?'<span class="help">Your leader moves work from Review to Complete.</span>':'')+'</fieldset>'+
+ '<div class="field"><label for="f-block">Blocked by</label><input id="f-block" name="blockedBy" class="inp" maxlength="120" value="'+esc(f.blockedBy)+'" placeholder="Leave empty if nothing is blocking"'+dis+'></div>'+
+ '<div class="field"><label for="f-notes">Notes</label><textarea id="f-notes" name="notes" class="inp" maxlength="1000"'+dis+'>'+esc(f.notes||'')+'</textarea></div>'+
+ (t&&t.completedAt?'<p class="muted">Completed '+fdy(t.completedAt)+'</p>':'')+
+ '<div class="spread">'+(t&&editable&&!isEmp?'<button type="button" class="btn danger" data-act="confirmDel" data-kind="task" data-id="'+t.id+'">Delete</button>':'<span></span>')+
+ '<div class="row"><button type="button" class="btn" data-act="close">Cancel</button>'+(editable?'<button type="submit" class="btn primary"'+(S.saving?' disabled':'')+'>'+(t?'Save changes':'Assign task')+'</button>':'')+'</div></div></form></div>';
+}
+function modalProj(M,L){
+ const p=L.id?S.projs.find(x=>x.id===L.id):null;
+ const f=Object.assign({name:'',owner:'',start:TODAY,deadline:ds(T0+30),desc:''},p||{});
+ const owners=M.emps.slice().sort((a,b)=>a.name.localeCompare(b.name));
+ const hasTasks=p&&S.tasks.some(t=>t.proj===p.id);
+ return '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mp"><div class="spread"><h2 id="mp" style="font-size:15px">'+(p?'Edit project':'New project')+'</h2><button type="button" class="icon-btn" data-act="close" aria-label="Close">'+icon('x',16)+'</button></div>'+
+ '<form class="stack" style="gap:14px" data-form="proj" data-id="'+(p?p.id:'')+'" novalidate>'+
+ '<div class="field"><label for="p-name">Project name</label><input id="p-name" name="name" class="inp" maxlength="80" value="'+esc(f.name)+'" placeholder="e.g. Q4 BESS campaign"><span class="err" id="p-name-err" hidden>Give the project a name.</span></div>'+
+ '<div class="field"><label for="p-owner">Project lead</label><select id="p-owner" name="owner" class="inp"><option value="">Choose a lead</option>'+owners.map(e=>'<option value="'+e.id+'"'+sel(e.id,f.owner)+'>'+esc(e.name)+' ('+esc(e.dept)+')</option>').join('')+'</select><span class="err" id="p-owner-err" hidden>Pick a project lead.</span></div>'+
+ '<div class="fgrid"><div class="field"><label for="p-start">Start</label><input id="p-start" name="start" class="inp" type="date" value="'+esc(f.start)+'"></div><div class="field"><label for="p-dl">Deadline</label><input id="p-dl" name="deadline" class="inp" type="date" value="'+esc(f.deadline)+'"><span class="err" id="p-dl-err" hidden>Deadline must be after the start.</span></div></div>'+
+ '<div class="field"><label for="p-desc">Description</label><textarea id="p-desc" name="desc" class="inp" maxlength="400">'+esc(f.desc||'')+'</textarea></div>'+
+ '<div class="spread">'+(p?(hasTasks?'<span class="muted">Remove its tasks before deleting.</span>':'<button type="button" class="btn danger" data-act="confirmDel" data-kind="proj" data-id="'+p.id+'">Delete</button>'):'<span></span>')+'<div class="row"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">'+(p?'Save changes':'Create project')+'</button></div></div></form></div>';
+}
+function modalEmp(M,L){
+ const e=L.id?S.emps.find(x=>x.id===L.id):null;
+ const f=Object.assign({name:'',dept:'',role:'',leads:[],onLeave:false,leaveNote:''},e||{});
+ const depts=allDepts();
+ const openN=e?S.tasks.filter(t=>t.emp===e.id&&t.status!=='done').length:0;
+ return '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="me"><div class="spread"><h2 id="me" style="font-size:15px">'+(e?'Edit employee':'Add employee')+'</h2><button type="button" class="icon-btn" data-act="close" aria-label="Close">'+icon('x',16)+'</button></div>'+
+ '<form class="stack" style="gap:14px" data-form="emp" data-id="'+(e?e.id:'')+'" novalidate>'+
+ '<div class="fgrid"><div class="field"><label for="e-name">Full name</label><input id="e-name" name="name" class="inp" maxlength="60" value="'+esc(f.name)+'"><span class="err" id="e-name-err" hidden>Enter a name.</span></div>'+
+ '<div class="field"><label for="e-role">Job title</label><input id="e-role" name="role" class="inp" maxlength="60" value="'+esc(f.role)+'"></div></div>'+
+ '<div class="field"><label for="e-dept">Department</label><input id="e-dept" name="dept" class="inp" list="dept-list" maxlength="40" value="'+esc(f.dept)+'" placeholder="Pick or type a new department"><datalist id="dept-list">'+depts.map(d=>'<option value="'+esc(d)+'"></option>').join('')+'</datalist><span class="err" id="e-dept-err" hidden>Enter a department.</span></div>'+
+ '<fieldset class="field" style="border:0;padding:0;margin:0"><legend class="lbl" style="margin-bottom:6px">Leads these departments</legend><div class="row">'+depts.map(d=>'<label class="check"><input type="checkbox" name="leads" value="'+esc(d)+'"'+((f.leads||[]).includes(d)?' checked':'')+'>'+esc(d)+'</label>').join('')+'</div><span class="help">Leave all unticked for non-leaders.</span></fieldset>'+
+ '<label class="check"><input type="checkbox" name="onLeave"'+(f.onLeave?' checked':'')+'>On leave</label>'+
+ '<div class="field"><label for="e-note">Leave note</label><input id="e-note" name="leaveNote" class="inp" maxlength="80" value="'+esc(f.leaveNote||'')+'" placeholder="e.g. Back on 6 Oct"></div>'+
+ '<div class="spread">'+(e?(openN?'<span class="muted">Reassign '+plural(openN,'open task')+' before removing.</span>':'<button type="button" class="btn danger" data-act="confirmDel" data-kind="emp" data-id="'+e.id+'">Remove</button>'):'<span></span>')+'<div class="row"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">'+(e?'Save changes':'Add employee')+'</button></div></div></form></div>';
+}
+function modalConfirm(L){
+ const name=L.kind==='task'?(S.tasks.find(t=>t.id===L.id)||{}).title:L.kind==='proj'?(S.projs.find(p=>p.id===L.id)||{}).name:(S.emps.find(e=>e.id===L.id)||{}).name;
+ const what={task:'task',proj:'project',emp:'employee'}[L.kind];
+ return '<div class="modal sm" role="alertdialog" aria-modal="true" aria-labelledby="mc"><h2 id="mc" style="font-size:15px">Delete this '+what+'?</h2><p>'+esc(name||'')+' will be removed for everyone. This can’t be undone.</p><div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="close">Keep it</button><button type="button" class="btn danger" data-act="doDelete" data-kind="'+L.kind+'" data-id="'+L.id+'">Delete '+what+'</button></div></div>';
+}
+
+/* ---------- shell ---------- */
+function roleSwitcher(){
+ const leaders=S.emps.filter(e=>(e.leads||[]).length).sort((a,b)=>a.name.localeCompare(b.name));
+ const emps=S.emps.slice().sort((a,b)=>a.name.localeCompare(b.name));
+ const c=ctx();
+ let who='';
+ if(S.role==='leader')who='<label class="sr" for="rs-p">Leader</label><select id="rs-p" class="inp" style="width:auto;min-height:38px" data-bind="actor">'+leaders.map(e=>'<option value="'+e.id+'"'+sel(e.id,c.me&&c.me.id)+'>'+esc(e.name)+', '+esc((e.leads||[]).join(' + '))+'</option>').join('')+'</select>';
+ if(S.role==='employee')who='<label class="sr" for="rs-p">Employee</label><select id="rs-p" class="inp" style="width:auto;min-height:38px" data-bind="actor">'+emps.map(e=>'<option value="'+e.id+'"'+sel(e.id,c.me&&c.me.id)+'>'+esc(e.name)+'</option>').join('')+'</select>';
+ return '<div class="row" style="gap:8px"><span class="muted">Viewing as</span><div class="seg" role="group" aria-label="Role">'+[['ceo','CEO'],['leader','Leader'],['employee','Employee']].map(r=>'<button type="button" data-set="role" data-val="'+r[0]+'"'+pressed(S.role===r[0])+'>'+r[1]+'</button>').join('')+'</div>'+who+'</div>';
+}
+function navItems(M,mobile){
+ return PAGES.filter(p=>!p.roles||p.roles.includes(M.c.role)).map(p=>{
+  let badge='';
+  if(p.k==='tasks'){const n=M.sTasks.filter(t=>t.overdue).length;if(n)badge='<span class="tag t-r badge num">'+n+'</span>';}
+  return '<button type="button" class="nav" data-act="nav" data-page="'+p.k+'"'+(S.page===p.k?' aria-current="page"':'')+'>'+icon(p.ic)+p.label+(mobile?'':badge)+'</button>';}).join('');
+}
+function loadingView(){return '<div class="card"><div class="skel" style="width:40%"></div><div class="skel"></div><div class="skel" style="width:80%"></div><div class="skel" style="width:60%"></div></div>';}
+function render(){
+ const app=document.getElementById('app');
+ const a=document.activeElement;const fid=a&&a.id;let ss=null,se=null;try{if(a&&'selectionStart' in a&&a.type!=='range'){ss=a.selectionStart;se=a.selectionEnd;}}catch(e){}
+ const M=build();
+ const pg=PAGES.find(p=>p.k===S.page&&(!p.roles||p.roles.includes(M.c.role)))?S.page:'dashboard';
+ let content;
+ const loaded=S.loaded.employees&&S.loaded.projects&&S.loaded.tasks;
+ if(S.dbState==='connecting'||(S.db&&!loaded))content=loadingView();
+ else if(!S.db)content=emptyPage('Shared data is not available here','Open this page from its claude.ai link while signed in to load and save the team’s tasks.');
+ else if(!S.emps.length)content=emptyPage('No employees yet',canManagePeople(M)?'Add your first employee to get started.':'Ask the CEO office to add the team.')+(canManagePeople(M)?'<div><button type="button" class="btn primary" data-act="newEmp">'+icon('plus',16)+'Add employee</button></div>':'');
+ else content=({dashboard:pageDashboard,departments:pageDepartments,employees:pageEmployees,tasks:pageTasks,projects:pageProjects,calendar:pageCalendar,reports:pageReports,settings:pageSettings}[pg])(M);
+ app.innerHTML='<div class="layout"><nav class="side" aria-label="Main"><div class="brand"><div class="logo">M</div><div><div style="font-weight:700;font-size:15px">MAQO</div><div class="muted">Command Center</div></div></div>'+navItems(M)+'<div style="flex-grow:1"></div>'+
+ (M.c.me&&M.c.role!=='ceo'?'<div class="who" style="padding:12px 10px;border-top:1px solid var(--line)">'+av(M.c.me)+'<span><b>'+esc(M.c.me.name)+'</b><span class="muted">'+(M.c.role==='leader'?'Leader':'Employee')+'</span></span></div>':'<div class="who" style="padding:12px 10px;border-top:1px solid var(--line)"><span class="av" style="background:var(--text);color:var(--bg)">KK</span><span><b>CEO Office</b><span class="muted">All departments</span></span></div>')+
+ '</nav><nav class="mtop" aria-label="Main">'+navItems(M,true)+'</nav><main class="main"><div class="spread" style="justify-content:flex-end">'+roleSwitcher()+'</div>'+
+ (!S.canWrite&&S.db?'<div class="banner t-n">You can view this data but not change it.</div>':'')+content+'</main></div>';
+ renderLayer(M);
+ if(fid){const el=document.getElementById(fid);if(el&&el!==document.activeElement){el.focus({preventScroll:true});if(ss!=null&&el.setSelectionRange){try{el.setSelectionRange(ss,se)}catch(e){}}}}
+}
+function renderLayer(M){
+ const L=S.layer;const layer=document.getElementById('layer');
+ if(!L){if(layer.innerHTML){layer.innerHTML='';document.body.style.overflow='';}return;}
+ M=M||build();
+ let inner='';
+ if(L.type==='emp')inner=drawerEmp(M,L.id);else if(L.type==='proj')inner=drawerProj(M,L.id);
+ else if(L.type==='task')inner=modalTask(M,L);else if(L.type==='projForm')inner=modalProj(M,L);
+ else if(L.type==='empForm')inner=modalEmp(M,L);else if(L.type==='confirm')inner=modalConfirm(L);
+ if(!inner){S.layer=null;layer.innerHTML='';document.body.style.overflow='';return;}
+ const key=L.type+':'+(L.id||'')+':'+(L.nonce||'');
+ const isForm=['task','projForm','empForm'].includes(L.type);
+ if(isForm&&layer.dataset.key===key)return; // keep typed input while live data updates
+ const same=layer.dataset.key===key;const sc=same&&layer.querySelector('.drawer,.modal')?layer.querySelector('.drawer,.modal').scrollTop:0;
+ layer.dataset.key=key;
+ layer.innerHTML='<div class="overlay"><button type="button" class="scrim" data-act="close" aria-label="Close" tabindex="-1"></button>'+inner+'</div>';
+ document.body.style.overflow='hidden';
+ const box=layer.querySelector('.drawer,.modal');
+ if(same&&box){box.style.animation='none';box.scrollTop=sc;return;}
+ const first=layer.querySelector('input:not([disabled]),select:not([disabled]),textarea:not([disabled]),button.icon-btn');if(first)first.focus({preventScroll:true});
+}
+function openLayer(l){l.nonce=Date.now();S.layer=l;document.getElementById('layer').dataset.key='';renderLayer();}
+function closeLayer(){S.layer=null;document.getElementById('layer').dataset.key='';renderLayer();}
+
+/* ---------- writes ---------- */
+async function write(fn,okMsg){
+ if(!S.db){toast('Shared data is not connected, so this was not saved');return false;}
+ if(!S.canWrite){toast('You have view-only access');return false;}
+ try{await fn(S.db);if(okMsg)toast(okMsg);return true;}
+ catch(e){const code=e&&e.code;
+  if(code==='invalid_argument'&&!(e.message||'').match(/path|body|field/i)){S.canWrite=false;toast('You have view-only access, so changes can’t be saved');render();}
+  else if(code==='unavailable'){toast('Connection dropped. Try again in a moment.');}
+  else if(code==='quota_exceeded'){toast('Storage is full: '+(e.message||'remove old tasks to continue'));}
+  else if(code==='revoked'){S.canWrite=false;toast('Your access changed. Reload to continue.');render();}
+  else toast('Couldn’t save: '+((e&&e.message)||'unknown error'));
+  return false;}
+}
+function nextDue(due,rep){const d=dn(due);if(isNaN(d))return ds(T0+7);if(rep==='weekly')return ds(d+7);const x=new Date(d*864e5);return ds(Math.round(Date.UTC(x.getUTCFullYear(),x.getUTCMonth()+1,x.getUTCDate())/864e5));}
+async function setStatus(id,status){
+ const t=S.tasks.find(x=>x.id===id);if(!t)return;
+ const patch={status,updatedAt:new Date().toISOString()};
+ if(status==='done')patch.completedAt=TODAY; else patch.completedAt=null;
+ const msg=status==='done'?'Marked “'+t.title+'” complete':'Moved “'+t.title+'” to '+STAGE_LABEL[status].toLowerCase();
+ const ok=await write(db=>db.doc('tasks/'+id).update(patch),msg);
+ if(ok&&status==='done'&&t.status!=='done')await spawnRepeat(t);
+}
+async function spawnRepeat(t){
+ if(!t.repeat||t.repeat==='none')return;
+ const n={title:t.title,emp:t.emp,proj:t.proj||'',prio:t.prio||'medium',due:nextDue(t.due,t.repeat),status:'todo',progress:0,blockedBy:'',repeat:t.repeat,notes:t.notes||'',createdAt:new Date().toISOString()};
+ await write(db=>db.collection('tasks').add(n),'Next “'+t.title+'” scheduled for '+fd(n.due));
+}
+
+/* ---------- forms ---------- */
+function showErr(id,show){const el=document.getElementById(id);if(el)el.hidden=!show;const inp=document.getElementById(id.replace(/-err$/,''));if(inp){inp.setAttribute('aria-invalid',show?'true':'false');inp.style.borderColor=show?'var(--r-dot)':'';}return show;}
+async function submitForm(form){
+ const kind=form.dataset.form,id=form.dataset.id;const fd_=new FormData(form);
+ if(kind==='task'){
+  const M=build();const t=id?S.tasks.find(x=>x.id===id):null;
+  const data={};
+  ['title','emp','proj','due','prio','repeat','blockedBy','notes'].forEach(k=>{const el=form.elements[k];if(el&&!el.disabled)data[k]=String(fd_.get(k)||'').trim();});
+  const stv=fd_.get('status');if(stv)data.status=String(stv);
+  const title=data.title!=null?data.title:(t&&t.title)||'';const emp=data.emp!=null?data.emp:(t&&t.emp)||'';
+  let bad=false;bad=showErr('f-title-err',!title)||bad;bad=showErr('f-emp-err',!emp)||bad;
+  if(bad){const f=form.querySelector('[aria-invalid="true"]');if(f)f.focus();return;}
+  if(M.c.role==='employee'&&data.status==='done'&&(!t||t.status!=='done'))data.status='review';
+  if(data.status==='done'){if(!t||t.status!=='done')data.completedAt=TODAY;}
+  else if(data.status)data.completedAt=null;
+  data.updatedAt=new Date().toISOString();
+  S.saving=true;
+  let ok;
+  if(t){ok=await write(db=>db.doc('tasks/'+id).update(data),'Saved “'+title+'”');if(ok&&data.status==='done'&&t.status!=='done')await spawnRepeat(Object.assign({},t,data));}
+  else{const full=Object.assign({title:'',emp:'',proj:'',prio:'medium',due:ds(T0+7),status:'todo',progress:0,blockedBy:'',repeat:'none',notes:''},data,{createdAt:new Date().toISOString()});
+   const e=S.emps.find(x=>x.id===full.emp);ok=await write(db=>db.collection('tasks').add(full),'Assigned “'+title+'” to '+(e?e.name:'them'));}
+  S.saving=false;if(ok)closeLayer();
+ }
+ if(kind==='proj'){
+  const data={name:String(fd_.get('name')||'').trim(),owner:String(fd_.get('owner')||''),start:String(fd_.get('start')||''),deadline:String(fd_.get('deadline')||''),desc:String(fd_.get('desc')||'').trim()};
+  let bad=false;bad=showErr('p-name-err',!data.name)||bad;bad=showErr('p-owner-err',!data.owner)||bad;bad=showErr('p-dl-err',!!(data.start&&data.deadline&&dn(data.deadline)<dn(data.start)))||bad;
+  if(bad)return;
+  const ok=id?await write(db=>db.doc('projects/'+id).update(data),'Saved '+data.name):await write(db=>db.collection('projects').add(data),'Created '+data.name);
+  if(ok)closeLayer();
+ }
+ if(kind==='emp'){
+  const data={name:String(fd_.get('name')||'').trim(),role:String(fd_.get('role')||'').trim(),dept:String(fd_.get('dept')||'').trim(),leads:fd_.getAll('leads').map(String),onLeave:!!fd_.get('onLeave'),leaveNote:String(fd_.get('leaveNote')||'').trim()};
+  let bad=false;bad=showErr('e-name-err',!data.name)||bad;bad=showErr('e-dept-err',!data.dept)||bad;if(bad)return;
+  const ok=id?await write(db=>db.doc('employees/'+id).update(data),'Saved '+data.name):await write(db=>db.collection('employees').add(data),'Added '+data.name);
+  if(ok)closeLayer();
+ }
+ if(kind==='settings'){
+  const cap=Math.round(+fd_.get('capacity')),al=Math.round(+fd_.get('almost'));
+  if(!(cap>=2&&al>=1&&al<cap)){toast('“Almost full” must be lower than “Overloaded”');return;}
+  await write(db=>db.doc('settings/app').set({capacity:cap,almost:al}),'Availability rules saved');
+ }
+}
+
+/* ---------- events ---------- */
+const ACT={
+ nav(d){S.page=d.page;LS.set('page',d.page);closeLayer();render();window.scrollTo(0,0);},
+ open(d){const [k,id]=d.ref.split(':');if(k==='task')openLayer({type:'task',id});else openLayer({type:k,id});},
+ close(){closeLayer();},
+ assign(d){const preset={};if(d.emp)preset.emp=d.emp;if(d.proj)preset.proj=d.proj;if(d.due)preset.due=d.due;openLayer({type:'task',preset});},
+ scroll(d){const el=document.getElementById(d.to);if(el)el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});},
+ filterTeam(d){S.ui.teamStatus=d.val;render();ACT.scroll({to:'team'});},
+ tasksFilter(d){S.ui.tStatus=d.val;S.ui.tDept='All';S.ui.tProj='all';S.ui.tEmp='all';S.ui.tPrio='all';S.ui.tq='';ACT.nav({page:'tasks'});},
+ deptPeople(d){S.ui.eDept=d.dept;S.ui.eStatus='all';S.ui.eq='';ACT.nav({page:'employees'});},
+ deptTasks(d){Object.assign(S.ui,{tq:'',tStatus:'open',tDept:d.dept,tProj:'all',tEmp:'all',tPrio:'all'});ACT.nav({page:'tasks'});},
+ clearTaskFilters(){Object.assign(S.ui,{tq:'',tStatus:'open',tDept:'All',tProj:'all',tEmp:'all',tPrio:'all'});render();},
+ approve(d){setStatus(d.id,'done');},
+ advance(d){const t=S.tasks.find(x=>x.id===d.id);if(t)setStatus(d.id,t.status==='todo'?'inprogress':'review');},
+ move(d){const M=build();const to=(M.c.role==='employee'&&d.to==='done')?'review':d.to;setStatus(d.id,to);},
+ newProj(){openLayer({type:'projForm'});},
+ editProj(d){openLayer({type:'projForm',id:d.id});},
+ newEmp(){openLayer({type:'empForm'});},
+ editEmp(d){openLayer({type:'empForm',id:d.id});},
+ async toggleLeave(d){const e=S.emps.find(x=>x.id===d.id);if(!e)return;await write(db=>db.doc('employees/'+e.id).update({onLeave:!e.onLeave}),e.name+(e.onLeave?' is back at work':' marked on leave'));},
+ confirmDel(d){openLayer({type:'confirm',kind:d.kind,id:d.id});},
+ async doDelete(d){const col={task:'tasks',proj:'projects',emp:'employees'}[d.kind];const ok=await write(db=>db.doc(col+'/'+d.id).delete(),'Deleted');if(ok)closeLayer();},
+ calShift(d){const [y,m]=S.ui.calMonth.split('-').map(Number);const x=new Date(Date.UTC(y,m-1+(+d.val),1));S.ui.calMonth=x.getUTCFullYear()+'-'+pad(x.getUTCMonth()+1);S.ui.calDay=S.ui.calMonth+'-01';render();},
+ calToday(){S.ui.calMonth=TODAY.slice(0,7);S.ui.calDay=TODAY;render();},
+ async exportCsv(){
+  const M=build();const R=reportData(M);
+  const rows=[['Employee','Department','Status','Open tasks','Overdue','Completed in period','On-time rate']].concat(R.people.map(p=>[p.e.name,p.e.dept,p.e.st.label,p.open,p.overdue,p.done,p.rate==null?'':p.rate+'%']));
+  const csv=rows.map(r=>r.map(v=>{const s=String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\n');
+  try{await S.downloads.save({filename:'maqo-team-report-'+ds(R.a)+'-to-'+ds(R.b)+'.csv',data:new Blob([csv],{type:'text/csv'})});toast('Report saved');}
+  catch(e){if(e&&e.code==='declined')return;if(e&&e.code==='rate_limited'){toast('A save prompt is already open');return;}toast('Couldn’t export the report here');}
+ }
+};
+document.addEventListener('click',ev=>{
+ const s=ev.target.closest('[data-set]');
+ if(s){const k=s.dataset.set,v=s.dataset.val;
+  if(k==='role'){S.role=v;LS.set('role',v);S.actor='';LS.set('actor','');const c=ctx();S.actor=c.me?c.me.id:'';S.ui.teamDept='All';S.ui.wlDept='All';S.ui.eDept='All';S.ui.tDept='All';closeLayer();render();return;}
+  if(k==='tSort'){S.ui.tSort=v;}else{S.ui[k]=v;if(k==='tView')LS.set('tView',v);}
+  render();return;}
+ const a=ev.target.closest('[data-act]');
+ if(a&&ACT[a.dataset.act]){ev.preventDefault();ACT[a.dataset.act](a.dataset);}
+});
+document.addEventListener('submit',ev=>{const f=ev.target.closest('form[data-form]');if(f){ev.preventDefault();submitForm(f);}});
+let typeTimer=null;
+document.addEventListener('input',ev=>{
+ const el=ev.target;
+ if(el.id==='f-prog'){const o=document.getElementById('f-prog-out');if(o)o.textContent=el.value+'%';return;}
+ if(el.dataset&&el.dataset.bind&&el.type==='search'){S.ui[el.dataset.bind]=el.value;clearTimeout(typeTimer);typeTimer=setTimeout(render,180);}
+ if(el.closest&&el.closest('form')&&el.getAttribute('aria-invalid')==='true'&&el.value.trim()){showErr(el.id+'-err',false);}
+});
+document.addEventListener('change',ev=>{
+ const el=ev.target;const k=el.dataset&&el.dataset.bind;if(!k||el.type==='search')return;
+ if(k==='actor'){S.actor=el.value;LS.set('actor',el.value);S.ui.teamDept='All';S.ui.wlDept='All';S.ui.eDept='All';}
+ else S.ui[k]=el.value;
+ render();
+});
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&S.layer){closeLayer();}});
+
+/* ---------- boot ---------- */
+async function boot(){
+ render();
+ const C=window.claude;
+ if(!C||typeof C.use!=='function'){S.dbState='none';render();return;}
+ C.use('downloads').then(d=>{S.downloads=d;}).catch(()=>{});
+ let user=null;try{user=await C.use('user');}catch(e){}
+ if(user){try{const w=await user.can('data.write');if(w===false)S.canWrite=false;}catch(e){}}
+ let db=null;try{db=await C.use('db');}catch(e){}
+ if(!db){S.dbState='none';render();return;}
+ S.db=db;S.dbState='live';render();
+ const onErr=name=>e=>{if(e&&e.code==='revoked'){S.canWrite=false;}toast('Live updates stopped for '+name+'. Reload the page.');};
+ const sub=(col,key,map)=>db.collection(col).onSnapshot(snap=>{S[key]=snap.docs.map(d=>Object.assign({id:d.id},d.data()));if(map)S[key]=S[key].map(map);S.loaded[col]=true;render();},onErr(col));
+ sub('employees','emps',e=>Object.assign({},e,{leads:Array.isArray(e.leads)?e.leads:[]}));
+ sub('projects','projs');
+ sub('tasks','tasks');
+ db.doc('settings/app').onSnapshot(s=>{S.settings=Object.assign({capacity:5,almost:4},s.exists?s.data():{});render();},()=>{});
+}
+boot();
+</script>
+</body>
+</html>
