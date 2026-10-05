@@ -83,11 +83,13 @@ const TOKEN_ERROR_CODES = new Set([99991661, 99991663, 99991668]);
 export async function larkRequest<T>(
   method: 'GET' | 'POST' | 'PUT',
   path: string,
-  opts: { query?: Record<string, string | number | undefined>; body?: unknown } = {},
+  opts: { query?: Record<string, string | number | string[] | undefined>; body?: unknown } = {},
 ): Promise<T> {
   const url = new URL(apiBase() + path);
   for (const [k, v] of Object.entries(opts.query ?? {})) {
-    if (v !== undefined && v !== '') url.searchParams.set(k, String(v));
+    // Arrays become repeated parameters (?ids=a&ids=b), as Lark's batch endpoints expect.
+    if (Array.isArray(v)) for (const x of v) url.searchParams.append(k, x);
+    else if (v !== undefined && v !== '') url.searchParams.set(k, String(v));
   }
 
   for (let attempt = 0; attempt < 2; attempt++) {
