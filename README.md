@@ -54,6 +54,14 @@ departments, or an employee. It works in local development, and on Vercel previe
 deployments only when `DEV_LOGIN=1`. It is always off in production. A red DEV SIGN-IN
 badge shows while it's in use.
 
+## CEO-only mode (current setting)
+
+`CEO_ONLY_MODE = true` in `config/app.ts`: there is no Lark sign-in, everyone who opens the
+deployment sees the full CEO view, and editing is off. Keep Vercel Deployment Protection
+on while this is set, because the deployment is then the only lock on the data. Set it to
+`false` to turn on Lark sign-in, the leader and employee views, and (with
+`LARK_WRITES_ENABLED=1`) editing.
+
 ## Editing tasks
 
 - Who: the CEO on any task; a leader on tasks whose departments include one they lead;

@@ -23,3 +23,12 @@ export function overloadedAt(): number {
 
 /** Org-chart reads change rarely; reuse them for longer than Base reads. */
 export const CONTACTS_CACHE_SECONDS = 600;
+
+/**
+ * CEO-only mode (current setting): no Lark sign-in, everyone who can reach the deployment
+ * sees the full CEO view, and editing is off. Leader and employee views, Lark sign-in and
+ * editing are built but switched off until this is set to false.
+ * Keep Vercel Deployment Protection on while this is true: the deployment itself is the
+ * only lock on the data.
+ */
+export const CEO_ONLY_MODE = true;

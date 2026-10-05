@@ -1,7 +1,7 @@
 // Loads everything the dashboard shows from Lark, server-side only. Never throws: a table or
 // the org chart that can't be read becomes a warning and an empty list, and the page renders.
 
-import { CONTACTS_CACHE_SECONDS, READ_CACHE_SECONDS, freeThreshold, overloadedAt } from '../../config/app.ts';
+import { CEO_ONLY_MODE, CONTACTS_CACHE_SECONDS, READ_CACHE_SECONDS, freeThreshold, overloadedAt } from '../../config/app.ts';
 import { mapDepartment } from '../../config/departments.ts';
 import { PROJECTS_SOURCE, TASK_SOURCES } from '../../config/task-sources.ts';
 import { LarkConfigError, larkEnv } from '../lark/env.ts';
@@ -111,6 +111,7 @@ function emptySnapshot(warning: string): Snapshot {
 
 /** Writes are off unless explicitly switched on, so a deployment can never write by accident. */
 export function writesEnabled(): boolean {
+  if (CEO_ONLY_MODE) return false;
   return fixturesEnabled() || process.env.LARK_WRITES_ENABLED === '1';
 }
 

@@ -35,7 +35,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const overdue = M.sTasks.filter((t) => t.overdue).length;
 
   const nav = (mobile: boolean) =>
-    PAGES.filter((p) => !p.roles || p.roles.includes(role)).map((p) => (
+    PAGES.filter((p) => (!p.roles || p.roles.includes(role)) && (p.href !== '/my-work' || me.openId)).map((p) => (
       <Link key={p.href} href={p.href} className="nav" aria-current={path === p.href ? 'page' : undefined}>
         <Icon n={p.ic} />
         {p.label}

@@ -6,11 +6,20 @@ import { Shell } from '../../components/Shell';
 import { LoginGate } from '../../components/LoginGate';
 import { SESSION_COOKIE, SessionConfigError, decodeSession, devLoginEnabled, type Session } from '../../lib/auth/session';
 import { resolveViewer, scopeSnapshot } from '../../lib/auth/viewer';
+import { CEO_ONLY_MODE } from '../../config/app';
 
 // Data is read from Lark on each request (with a 60 s server cache), never at build time.
 export const dynamic = 'force-dynamic';
 
 export default async function DashLayout({ children }: { children: ReactNode }) {
+  if (CEO_ONLY_MODE) {
+    const snapshot = await loadSnapshot();
+    return (
+      <DataProvider snapshot={snapshot} viewer={{ role: 'ceo', openId: null, depts: [] }} me={{ openId: '', name: 'CEO Office', avatarUrl: null }} dev={false}>
+        <Shell>{children}</Shell>
+      </DataProvider>
+    );
+  }
   const dev = devLoginEnabled();
   let session: Session | null;
   try {

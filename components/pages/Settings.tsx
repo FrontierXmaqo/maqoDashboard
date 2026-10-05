@@ -69,8 +69,12 @@ export default function Settings() {
             </tbody>
           </table>
         </div>
+        {me.openId ? (<>
         <p>Your Lark ID: <code className="num" style={{ userSelect: 'all' }}>{me.openId}</code></p>
-        <p className="muted">You are signed in as {me.name} ({M.viewer.role === 'ceo' ? 'CEO' : M.viewer.role === 'leader' ? `leader of ${M.viewer.depts.join(' + ')}` : 'employee'}). Editing arrives in the next phase; for now everything is read-only.</p>
+        <p className="muted">You are signed in as {me.name} ({M.viewer.role === 'ceo' ? 'CEO' : M.viewer.role === 'leader' ? `leader of ${M.viewer.depts.join(' + ')}` : 'employee'}). </p>
+        </>) : (
+          <p className="muted">CEO-only mode is on: everyone who opens this deployment sees the CEO view, with no Lark sign-in and no editing. Leader and employee views come later (CEO_ONLY_MODE in config/app.ts).</p>
+        )}
       </section>
       {M.viewer.role === 'ceo' && <section className="card">
         <h2>Lark department mapping</h2>
