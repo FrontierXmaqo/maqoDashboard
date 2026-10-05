@@ -11,6 +11,7 @@ import type { Person, Project, Snapshot, Task } from '../types.ts';
 import { cached } from './cache.ts';
 import { mapTask } from './mapTask.ts';
 import { dropCrossTableDuplicates } from './dedupe.ts';
+import { hideConfigured, isHiddenPerson } from './hide.ts';
 import { display } from './parse.ts';
 import { fixtureRecords, fixturesEnabled } from './fixtures.ts';
 
@@ -126,6 +127,7 @@ function emptySnapshot(warning: string): Snapshot {
     overloadedAt: overloadedAt(),
     writesEnabled: false,
     duplicatesSkipped: 0,
+    hiddenTasks: 0,
   };
 }
 
@@ -160,7 +162,9 @@ export async function loadSnapshot(): Promise<Snapshot> {
       }
     }),
   );
-  const { tasks, skipped: duplicatesSkipped } = dropCrossTableDuplicates(taskLists);
+  const deduped = dropCrossTableDuplicates(taskLists);
+  const duplicatesSkipped = deduped.skipped;
+  const { tasks, hiddenTasks } = hideConfigured(deduped.tasks);
 
   let projects: Project[] = [];
   try {
@@ -182,7 +186,7 @@ export async function loadSnapshot(): Promise<Snapshot> {
     }
   }
   const known = new Set(org.people.map((p) => p.openId));
-  const people = [...org.people, ...peopleFromTasks(tasks, known)];
+  const people = [...org.people, ...peopleFromTasks(tasks, known)].filter((p) => !isHiddenPerson(p.openId));
 
   const larkNames = new Set<string>();
   for (const d of org.departments) larkNames.add(d.i18n_name?.en_us || d.name || '');
@@ -202,5 +206,6 @@ export async function loadSnapshot(): Promise<Snapshot> {
     overloadedAt: overloadedAt(),
     writesEnabled: writesEnabled(),
     duplicatesSkipped,
+    hiddenTasks,
   };
 }
