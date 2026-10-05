@@ -5,7 +5,7 @@ import { NotSet, Pill } from '../ui';
 import { STATUS, personInDept } from '../../lib/model';
 import { CEO_OPEN_IDS, LEADERS } from '../../config/roles';
 import { TASK_STATUS_OPTIONS } from '../../config/schema';
-import { DEPARTMENTS } from '../../config/departments';
+import { DEPARTMENTS, LARK_DEPARTMENT_IGNORED } from '../../config/departments';
 
 const timeFmt = new Intl.DateTimeFormat('en-MY', { timeZone: 'Asia/Kuala_Lumpur', dateStyle: 'medium', timeStyle: 'short' });
 
@@ -84,7 +84,7 @@ export default function Settings() {
             <thead><tr><th>Lark name</th><th>App department</th></tr></thead>
             <tbody>
               {snap.departmentMap.length ? snap.departmentMap.map((d) => (
-                <tr key={d.lark}><td>{d.lark}</td><td>{d.app ?? <NotSet />}</td></tr>
+                <tr key={d.lark}><td>{d.lark}</td><td>{d.app ?? (LARK_DEPARTMENT_IGNORED.includes(d.lark) ? <span className="muted">Ignored</span> : <NotSet />)}</td></tr>
               )) : <tr><td colSpan={2} className="empty">No Lark department names found yet.</td></tr>}
             </tbody>
           </table>
@@ -103,6 +103,7 @@ export default function Settings() {
             </tbody>
           </table>
         </div>
+        {snap.duplicatesSkipped > 0 && <p className="muted">{snap.duplicatesSkipped} rows in a later table exactly repeat a row in an earlier one (same task, status, deadline and Task Responsible) and are counted once.</p>}
         <p className="muted num">{M.people.length} people ({M.people.filter((p) => p.source === 'contacts').length} from the org chart), {M.projects.length} projects, {M.tasks.length} tasks. Status options the app writes: {TASK_STATUS_OPTIONS.join(', ')}.</p>
       </section>
     </>

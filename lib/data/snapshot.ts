@@ -10,6 +10,7 @@ import { getDepartments, getUsers, listAllDepartments, listChildDepartments, lis
 import type { Person, Project, Snapshot, Task } from '../types.ts';
 import { cached } from './cache.ts';
 import { mapTask } from './mapTask.ts';
+import { dropCrossTableDuplicates } from './dedupe.ts';
 import { display } from './parse.ts';
 import { fixtureRecords, fixturesEnabled } from './fixtures.ts';
 
@@ -124,6 +125,7 @@ function emptySnapshot(warning: string): Snapshot {
     freeThreshold: freeThreshold(),
     overloadedAt: overloadedAt(),
     writesEnabled: false,
+    duplicatesSkipped: 0,
   };
 }
 
@@ -158,7 +160,7 @@ export async function loadSnapshot(): Promise<Snapshot> {
       }
     }),
   );
-  const tasks = taskLists.flat();
+  const { tasks, skipped: duplicatesSkipped } = dropCrossTableDuplicates(taskLists);
 
   let projects: Project[] = [];
   try {
@@ -199,5 +201,6 @@ export async function loadSnapshot(): Promise<Snapshot> {
     freeThreshold: freeThreshold(),
     overloadedAt: overloadedAt(),
     writesEnabled: writesEnabled(),
+    duplicatesSkipped,
   };
 }

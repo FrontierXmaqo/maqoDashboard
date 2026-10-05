@@ -89,6 +89,7 @@ test('model: overdue, open counts, support excluded from workload', () => {
     freeThreshold: 3,
     overloadedAt: 5,
     writesEnabled: false,
+    duplicatesSkipped: 0,
   };
   const m = build(snap, undefined, now);
   const t = (id: string) => m.tasks.find((x) => x.id === id)!;
@@ -103,4 +104,19 @@ test('model: overdue, open counts, support excluded from workload', () => {
   assert.equal(m.personById.get('ou_b')!.n, 0);
   assert.equal(m.personById.get('ou_b')!.deptLabel, 'Not set');
   assert.ok(m.depts.includes('Not set'));
+});
+
+test('rows repeated in a later table count once; edited copies count again', async () => {
+  const { dropCrossTableDuplicates } = await import('../lib/data/dedupe.ts');
+  const u = { openId: 'ou_a', name: 'A', avatarUrl: null };
+  const base = mapTask({ record_id: 'x', fields: {} }, SRC);
+  const ph = [{ ...base, id: 'ph1', title: 'QA Test', statusRaw: 'Ongoing', due: 1, assignees: [u] }, { ...base, id: 'ph2', title: 'Other', statusRaw: null, due: null, assignees: [] }];
+  const om = [{ ...base, id: 'om1', title: 'QA test ', statusRaw: 'Ongoing', due: 1, assignees: [u] }, { ...base, id: 'om2', title: 'Other', statusRaw: 'Stalled', due: null, assignees: [] }];
+  const r = dropCrossTableDuplicates([ph, om]);
+  assert.deepEqual(r.tasks.map((t) => t.id), ['ph1', 'ph2', 'om2']);
+  assert.equal(r.skipped, 1);
+});
+
+test('ignored Lark department names map to nothing', () => {
+  for (const n of ['MAQO Solar', 'Design', 'Product', 'R&D']) assert.equal(mapDepartment(n), null);
 });
