@@ -22,6 +22,9 @@ export type Department = (typeof DEPARTMENTS)[number];
  */
 export const LARK_DEPARTMENT_OVERRIDES: Record<string, Department> = {};
 
+/** Lark names that are not one of the 9 departments and are deliberately ignored. */
+export const LARK_DEPARTMENT_IGNORED = ['MAQO Solar', 'Design', 'Product', 'R&D'];
+
 /** Keyword rules, tried in order on the lower-cased name. */
 const RULES: [RegExp, Department][] = [
   [/\bceo\b|chief executive|management office|director/, 'CEO Office'],
@@ -39,6 +42,7 @@ export function mapDepartment(name: string | null | undefined): Department | nul
   const n = (name ?? '').trim();
   if (!n) return null;
   if (n in LARK_DEPARTMENT_OVERRIDES) return LARK_DEPARTMENT_OVERRIDES[n];
+  if (LARK_DEPARTMENT_IGNORED.some((x) => x.toLowerCase() === n.toLowerCase())) return null;
   const exact = DEPARTMENTS.find((d) => d.toLowerCase() === n.toLowerCase());
   if (exact) return exact;
   const lower = n.toLowerCase();

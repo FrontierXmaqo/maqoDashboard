@@ -77,4 +77,6 @@ export type Snapshot = {
   overloadedAt: number;
   /** Editing is switched on for this deployment (LARK_WRITES_ENABLED=1). */
   writesEnabled: boolean;
+  /** Rows skipped because they repeat a row from an earlier task table. */
+  duplicatesSkipped: number;
 };
