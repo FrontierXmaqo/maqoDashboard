@@ -113,18 +113,24 @@ export async function larkRequest<T>(
   throw new LarkApiError(path, 401, -1, 'access token rejected twice');
 }
 
-/** Follows page_token until has_more is false. Never assumes a single page. */
+/**
+ * Follows page_token until has_more is false. Never assumes a single page.
+ * GET list endpoints and POST search endpoints both take page_token as a query parameter.
+ */
 export async function larkListAll<T>(
   path: string,
   query: Record<string, string | number | undefined> = {},
   pageSize = 100,
+  opts: { method?: 'GET' | 'POST'; body?: unknown } = {},
 ): Promise<T[]> {
   const items: T[] = [];
   let pageToken: string | undefined;
   for (let page = 0; page < 10_000; page++) {
-    const data = await larkRequest<{ items?: T[]; has_more?: boolean; page_token?: string }>('GET', path, {
-      query: { ...query, page_size: pageSize, page_token: pageToken },
-    });
+    const data = await larkRequest<{ items?: T[] | null; has_more?: boolean; page_token?: string }>(
+      opts.method ?? 'GET',
+      path,
+      { query: { ...query, page_size: pageSize, page_token: pageToken }, body: opts.body },
+    );
     items.push(...(data.items ?? []));
     if (!data.has_more || !data.page_token) return items;
     pageToken = data.page_token;

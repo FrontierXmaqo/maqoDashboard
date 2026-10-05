@@ -8,7 +8,12 @@ Full brief: [docs/PROMPT.md](docs/PROMPT.md). Design reference:
 
 ## Status
 
-Phase 1 (scaffold and schema check). The dashboard pages come in Phase 2.
+Phase 2: read-only dashboard. All pages from the reference read live Lark data, with
+"Not set" wherever a value is missing. Everyone sees the CEO view until Lark sign-in
+(Phase 3). No writes yet (Phase 4).
+
+Local development without Lark access: `LARK_FIXTURES=1 npm run dev` loads sample data
+(never in production).
 
 ## Setup
 
@@ -38,8 +43,18 @@ cp .env.example .env.local   # fill in values; never commit them
 
 | Scope | Why |
 |---|---|
-| `bitable:app:readonly` | List tables and fields, read records |
+| `bitable:app:readonly` | List tables and fields, search records |
 | `bitable:app` | Create and update task records (Phase 4) |
+| `contact:contact.base:readonly` | Call the org-chart APIs |
+| `contact:department.base:readonly` | Department names |
+| `contact:user.base:readonly` | People's names and avatars (org chart and person fields on tasks) |
+| `contact:user.department:readonly` | Which department each person belongs to |
 
-Contacts and web app login scopes are added and verified in Phase 3. The app must
-also be added to the Base as a collaborator.
+Also: add the app to the Base as a collaborator, and set the app's contacts
+visibility range to the whole company (developer console > Permissions). Web app login
+scopes are added in Phase 3.
+
+Rules the dashboard applies: a task is overdue when its Estimate Deadline day (Kuala
+Lumpur time) is before today and its status is not Completed. A person is free at
+FREE_THRESHOLD (default 3) or fewer open tasks as Task Responsible, and overloaded at 5
+or more.

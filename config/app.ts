@@ -15,3 +15,11 @@ export function freeThreshold(): number {
 
 /** Cached Base reads are reused for this long, then fetched again. */
 export const READ_CACHE_SECONDS = 60;
+
+/** Open tasks at or above this count = "Overloaded". Always above the free threshold. */
+export function overloadedAt(): number {
+  return Math.max(5, freeThreshold() + 1);
+}
+
+/** Org-chart reads change rarely; reuse them for longer than Base reads. */
+export const CONTACTS_CACHE_SECONDS = 600;
