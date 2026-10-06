@@ -151,11 +151,13 @@ export async function loadSnapshot(): Promise<Snapshot> {
   const sources: Snapshot['sources'] = [];
   if (!fixturesEnabled() && usingTestBase()) warnings.push('Test data: this preview reads the test Base (LARK_BASE_TOKEN_TEST), not the live one.');
 
-  let tables: Sources = { tasks: TASK_SOURCES, projects: PROJECTS_SOURCE };
+  let tables: Sources;
   try {
     tables = await resolveSources();
   } catch (e) {
-    warnings.push(`Could not list the tables in the Base: ${describe(e)}`);
+    // Only the test Base lists tables; its tables cannot be read without their IDs.
+    const snap = emptySnapshot(`Could not list the tables in the test Base, so no data was read. Press Refresh to try again. (${describe(e)})`);
+    return { ...snap, warnings: [...warnings, ...snap.warnings] };
   }
 
   const taskLists = await Promise.all(
