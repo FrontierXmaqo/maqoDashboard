@@ -66,7 +66,7 @@ Read projects from the table `O&M CNI HANDOVER,CONTACT INFO` (`tbl5QmCHTiIgjUlE`
 - Map Lark org-chart departments to the 9 app departments in `config/departments.ts`. Keep a manual override map, because Lark department names may not match exactly.
 - Keep roles in `config/roles.ts`: CEO `open_id`s, each leader's `open_id` with their department list, and everyone else defaulting to employee. The Settings page shows this config read-only in v1.
 - **On leave:** there is no data source yet. Show "Not set" and treat the person as available.
-- **"Free" rule:** a person is free when their open assigned tasks (as `Task Responsible`) are ≤ `FREE_THRESHOLD`. The default is 3, matching the prototype, and it lives in `config/app.ts`.
+- **"Free" rule:** a person is free when their open assigned tasks (as `Task Responsible`) are ≤ `FREE_THRESHOLD`. The default is 0 (Free = no open tasks), and it lives in `config/app.ts`.
 
 ## Lark integration requirements
 - **App auth:** obtain a `tenant_access_token` with App ID and Secret, cache it server-side until shortly before it expires, and refresh it automatically.

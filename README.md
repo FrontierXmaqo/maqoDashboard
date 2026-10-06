@@ -30,7 +30,7 @@ Set values in Vercel only. Never commit them. `.env.example` lists the names.
 | `LARK_APP_SECRET` | Yes | Same page, App Secret. Server-only |
 | `LARK_BASE_TOKEN` | Yes | The Base's app token: the part after `/base/` in its URL (`NvYSbmF6aadBCvs0nhllBG5Zg1d`) |
 | `SESSION_SECRET` | When sign-in is on | 32+ random characters, e.g. `openssl rand -base64 48`. Signs the session cookie |
-| `FREE_THRESHOLD` | No | Open tasks at or below this = Free. Default 3 |
+| `FREE_THRESHOLD` | No | Open tasks at or below this = Free. Default 0 (Free = no open tasks, Working = 1–4, Overloaded = 5+) |
 | `LARK_WRITES_ENABLED` | No | `1` turns editing on (only when CEO-only mode is off). Leave empty until writes are approved |
 | `DEV_LOGIN` | No | Preview deployments only: `1` allows `/dev-login` mock sign-in. Never set in Production |
 

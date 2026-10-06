@@ -308,7 +308,7 @@ function TeamOverview() {
       )}
       <section className="kpis" aria-label="Summary">
         <button type="button" className="kpi big" onClick={() => scrollTo('free')}>
-          <span>Free now</span><span className="v num">{cnt('free')}</span><span className="muted">{M.freeThreshold} or fewer open tasks</span>
+          <span>Free now</span><span className="v num">{cnt('free')}</span><span className="muted">{M.freeThreshold === 0 ? 'No open tasks' : `${M.freeThreshold} or fewer open tasks`}</span>
         </button>
         <Link className="kpi" href="/employees" style={{ textDecoration: 'none' }}>
           <span className="muted">{M.viewer.role === 'ceo' ? 'Total employees' : 'Team size'}</span><span className="v num">{E.length}</span><span className="muted">On leave: not set</span>
