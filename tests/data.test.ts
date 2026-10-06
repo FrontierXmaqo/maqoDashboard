@@ -84,6 +84,7 @@ test('model: overdue, open counts, support excluded from workload', () => {
       { ...ben, jobTitle: '', dept: null, larkDepartments: [], source: 'tasks' },
     ],
     departmentMap: [],
+    skippedTables: [],
     sources: [],
     warnings: [],
     freeThreshold: 3,

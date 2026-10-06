@@ -23,6 +23,7 @@ const server = http.createServer((req, res) => {
     return send({ code: 0, data: { has_more: false, items } });
   }
   if (p === '/contact/v3/users/batch') return send({ code: 0, data: { items: [{ open_id: 'ou_solo', en_name: 'Solo Person', department_ids: [] }] } });
+  if (p === '/bitable/v1/apps/B/tables') return send({ code: 0, data: { has_more: false, items: [] } });
   if (p.endsWith('/records/search')) return send({ code: 0, data: { has_more: false, items: [] } });
   return send({ code: 404, msg: 'unexpected ' + p });
 });

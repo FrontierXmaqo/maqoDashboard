@@ -3,13 +3,14 @@
 
 import { CONTACTS_CACHE_SECONDS } from '../../config/app.ts';
 import { mapDepartment } from '../../config/departments.ts';
-import { TASK_SOURCES, tableForNewTask } from '../../config/task-sources.ts';
+import { tableForNewTask } from '../../config/task-sources.ts';
 import { canEditTask, creatableDepartments } from '../auth/permissions.ts';
 import { HttpError } from '../auth/request.ts';
 import { cached, invalidate } from '../data/cache.ts';
 import { F } from '../data/mapTask.ts';
 import { fixtureFields, fixturesEnabled, fixtureWrite } from '../data/fixtures.ts';
 import { writesEnabled } from '../data/snapshot.ts';
+import { resolveSources } from '../data/sources.ts';
 import { listFields } from '../lark/bitable.ts';
 import { larkEnv } from '../lark/env.ts';
 import { createRecord, updateRecord } from '../lark/writes.ts';
@@ -59,7 +60,7 @@ export async function createTask(v: Viewer, snap: Snapshot, input: TaskInput & {
   if (!creatableDepartments(v).includes(dept)) throw new HttpError(403, 'You can only create tasks in departments you lead.');
   checkPeople(v, snap, input);
   const fields = onlyWritable(toLarkFields({ status: 'Not yet started', ...input }, { previousStatus: null, now: Date.now(), creating: true }));
-  const src = tableForNewTask(dept);
+  const src = tableForNewTask(dept, (await resolveSources()).tasks);
   const [deptField, deptValue] = await departmentValue(src.tableId, dept);
   const all = { ...fields, [deptField]: deptValue }; // Department is written only on create.
   const recordId = fixturesEnabled() ? fixtureWrite(src.tableId, null, all) : await createRecord(larkEnv().baseToken, src.tableId, all);
@@ -70,7 +71,7 @@ export async function createTask(v: Viewer, snap: Snapshot, input: TaskInput & {
 export async function updateTask(v: Viewer, snap: Snapshot, id: string, input: TaskInput): Promise<void> {
   assertWritable(v);
   const [tableId, recordId] = id.split(':');
-  if (!TASK_SOURCES.some((s) => s.tableId === tableId) || !recordId) throw new HttpError(400, 'Unknown task.');
+  if (!(await resolveSources()).tasks.some((s) => s.tableId === tableId) || !recordId) throw new HttpError(400, 'Unknown task.');
   const task = snap.tasks.find((t) => t.id === id);
   if (!task) throw new HttpError(404, 'This task no longer exists in Lark. Refresh the page.');
   if (!canEditTask(v, task)) throw new HttpError(403, 'You can only edit tasks in departments you lead.');

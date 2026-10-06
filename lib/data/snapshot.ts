@@ -14,6 +14,7 @@ import { dropCrossTableDuplicates } from './dedupe.ts';
 import { hideConfigured, isHiddenPerson } from './hide.ts';
 import { display } from './parse.ts';
 import { fixtureRecords, fixturesEnabled } from './fixtures.ts';
+import { resolveSources, type Sources } from './sources.ts';
 
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -122,6 +123,7 @@ function emptySnapshot(warning: string): Snapshot {
     people: [],
     departmentMap: [],
     sources: [...TASK_SOURCES, PROJECTS_SOURCE].map((s) => ({ ...s, count: null })),
+    skippedTables: [],
     warnings: [warning],
     freeThreshold: freeThreshold(),
     overloadedAt: overloadedAt(),
@@ -147,16 +149,22 @@ export async function loadSnapshot(): Promise<Snapshot> {
     }
   }
   const warnings: string[] = [];
-  const sources: Snapshot['sources'] = [];
+  let tables: Sources = { tasks: TASK_SOURCES, projects: PROJECTS_SOURCE, skipped: [] };
+  try {
+    tables = await resolveSources();
+  } catch (e) {
+    warnings.push(`Could not list the tables in the Base, so only the configured tables are read: ${describe(e)}`);
+  }
 
+  // Kept in table order: Settings lists them that way, and dedupe keeps the earlier copy.
+  const sources: Snapshot['sources'] = tables.tasks.map((s) => ({ ...s, count: null }));
   const taskLists = await Promise.all(
-    TASK_SOURCES.map(async (src) => {
+    tables.tasks.map(async (src, i) => {
       try {
         const recs = await readTable(src.tableId);
-        sources.push({ ...src, count: recs.length });
+        sources[i].count = recs.length;
         return recs.map((r) => mapTask(r, src));
       } catch (e) {
-        sources.push({ ...src, count: null });
         warnings.push(`Could not read tasks from "${src.label}": ${describe(e)}`);
         return [];
       }
@@ -168,12 +176,12 @@ export async function loadSnapshot(): Promise<Snapshot> {
 
   let projects: Project[] = [];
   try {
-    const recs = await readTable(PROJECTS_SOURCE.tableId);
+    const recs = await readTable(tables.projects.tableId);
     projects = recs.map(mapProject);
-    sources.push({ ...PROJECTS_SOURCE, count: recs.length });
+    sources.push({ ...tables.projects, count: recs.length });
   } catch (e) {
-    sources.push({ ...PROJECTS_SOURCE, count: null });
-    warnings.push(`Could not read projects from "${PROJECTS_SOURCE.label}": ${describe(e)}`);
+    sources.push({ ...tables.projects, count: null });
+    warnings.push(`Could not read projects from "${tables.projects.label}": ${describe(e)}`);
   }
 
   let org: OrgChart = { people: [], departments: [] };
@@ -201,6 +209,7 @@ export async function loadSnapshot(): Promise<Snapshot> {
     people,
     departmentMap,
     sources,
+    skippedTables: tables.skipped,
     warnings,
     freeThreshold: freeThreshold(),
     overloadedAt: overloadedAt(),

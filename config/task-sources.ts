@@ -1,5 +1,7 @@
-// Lark Base tables that hold tasks. Every table here must use the same field names
-// (see config/schema.ts). To add a department's task table, add one entry.
+// Lark Base tables that hold tasks. Any other table in the Base with the task fields is
+// read too (lib/data/sources.ts), so department tables need no entry here. These come
+// first, and in a copied Base (new table IDs) they are found by label, ignoring spaces and
+// punctuation, so keep labels the same as the Lark names.
 
 export type TaskSource = {
   tableId: string;
@@ -16,8 +18,8 @@ export const TASK_SOURCES: TaskSource[] = [
 ];
 
 /** The table a new task in this department is created in. */
-export function tableForNewTask(dept: string): TaskSource {
-  return TASK_SOURCES.find((s) => s.createFor?.includes(dept)) ?? TASK_SOURCES.find((s) => s.createDefault) ?? TASK_SOURCES[0];
+export function tableForNewTask(dept: string, sources: TaskSource[] = TASK_SOURCES): TaskSource {
+  return sources.find((s) => s.createFor?.includes(dept)) ?? sources.find((s) => s.createDefault) ?? sources[0];
 }
 
 /** Read-only projects table. Tasks link to it through `PROJECT NAME (handover)`. */
