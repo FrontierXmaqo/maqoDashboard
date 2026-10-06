@@ -29,7 +29,7 @@ export default function Settings() {
             <div className="row"><Pill tone={STATUS.overloaded.tone}>Overloaded</Pill><span className="muted">{O} or more open tasks</span></div>
             <div className="row"><Pill tone="n">On leave</Pill><span className="muted">Not set. No leave data yet, so everyone counts as available.</span></div>
           </div>
-          <p className="muted">Free limit comes from FREE_THRESHOLD (default 3) in config/app.ts.</p>
+          <p className="muted">Free limit comes from FREE_THRESHOLD (default 0) in config/app.ts.</p>
         </section>
         <section className="card">
           <h2>Departments and leaders</h2>

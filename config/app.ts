@@ -4,7 +4,7 @@ export const LARK_API_BASE = 'https://open.larksuite.com/open-apis';
 
 export const TIMEZONE = 'Asia/Kuala_Lumpur';
 
-const DEFAULT_FREE_THRESHOLD = 3;
+const DEFAULT_FREE_THRESHOLD = 0;
 
 /** A person is free when their open tasks as Task Responsible are at or below this. */
 export function freeThreshold(): number {
