@@ -72,6 +72,8 @@ export type Snapshot = {
   /** Lark department name -> app department (or null), for the Settings page. */
   departmentMap: { lark: string; app: string | null }[];
   sources: { tableId: string; label: string; count: number | null }[];
+  /** Tables in the Base that are not read (not task tables), with the reason. */
+  skippedTables: { name: string; reason: string }[];
   warnings: string[];
   freeThreshold: number;
   overloadedAt: number;

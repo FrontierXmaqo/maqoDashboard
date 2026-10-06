@@ -1,7 +1,7 @@
-// Lark Base tables that hold tasks. Every table here must use the same field names
-// (see config/schema.ts). To add a department's task table, add one entry.
-// On the test Base (LARK_BASE_TOKEN_TEST) a table whose ID is not found is matched by its
-// label instead, ignoring spaces and punctuation, so keep labels the same as the Lark names.
+// Lark Base tables that hold tasks. Any other table in the Base with the task fields is
+// read too (lib/data/sources.ts), so department tables need no entry here. These come
+// first, and in a copied Base (new table IDs) they are found by label, ignoring spaces and
+// punctuation, so keep labels the same as the Lark names.
 
 export type TaskSource = {
   tableId: string;

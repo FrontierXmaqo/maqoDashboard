@@ -29,15 +29,14 @@ Set values in Vercel only. Never commit them. `.env.example` lists the names.
 | `LARK_APP_ID` | Yes | Lark developer console > your app > Credentials & Basic Info > App ID |
 | `LARK_APP_SECRET` | Yes | Same page, App Secret. Server-only |
 | `LARK_BASE_TOKEN` | Yes | The Base's app token: the part after `/base/` in its URL (`NvYSbmF6aadBCvs0nhllBG5Zg1d`) |
-| `LARK_BASE_TOKEN_TEST` | No | Test Base token (a copy of the live Base). Set it for **Preview** only: previews then read the test Base, production keeps reading `LARK_BASE_TOKEN`. Copied tables are found by name, so keep table names as in the live Base |
 | `SESSION_SECRET` | When sign-in is on | 32+ random characters, e.g. `openssl rand -base64 48`. Signs the session cookie |
 | `FREE_THRESHOLD` | No | Open tasks at or below this = Free. Default 0 (Free = no open tasks, Working = 1–4, Overloaded = 5+) |
 | `LARK_WRITES_ENABLED` | No | `1` turns editing on (only when CEO-only mode is off). Leave empty until writes are approved |
 | `DEV_LOGIN` | No | Preview deployments only: `1` allows `/dev-login` mock sign-in. Never set in Production |
 
 Tick **Production** and **Preview** for the Lark variables if you want preview links to
-show real data. For testing, set `LARK_BASE_TOKEN_TEST` (Preview) to a **copy** of the Base, and add the
-app to that copy as well. Previews then show a "Test data" banner. After changing variables, redeploy: Vercel only reads them at
+show real data. For write testing, point Preview's `LARK_BASE_TOKEN` at a **copy** of the Base, never the
+live one, and add the app to the copy too. After changing variables, redeploy: Vercel only reads them at
 build time for new deployments.
 
 ## Lark setup (developer console: open.larksuite.com/app)
@@ -107,9 +106,12 @@ Data outside a viewer's role is removed on the server before it reaches the brow
 
 ## How the data is read
 
-- Task tables (`config/task-sources.ts`): `(PH) Task Breakdown` and `(O&M) Task Breakdown
-  Copy`, merged. Add a department's table by adding one entry, if it uses the same field
-  names (`config/schema.ts`).
+- Task tables: **every table in the Base that has the fields Task, Task Responsible, Task
+  Status and Department (or Departments)** is read and merged, so a new department table
+  shows up by itself. Settings lists the tables read and the ones skipped (with why).
+  `(PH) Task Breakdown` and `(O&M) Task Breakdown Copy` (`config/task-sources.ts`) come
+  first; in a copied Base they are found by name. New tasks for a department go to the
+  table whose name contains that department, else to `(PH) Task Breakdown`.
 - Projects: `O&M CNI HANDOVER,CONTACT INFO`, read-only.
 - People and departments: the Lark org chart, mapped to the 9 app departments in
   `config/departments.ts` (fix wrong mappings in `LARK_DEPARTMENT_OVERRIDES`; Settings lists

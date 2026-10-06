@@ -30,6 +30,7 @@ const snap: Snapshot = {
   projects: [{ id: 'p1', name: 'P1', type: '', state: '', capacity: '', cycleStatus: '' }, { id: 'p2', name: 'P2', type: '', state: '', capacity: '', cycleStatus: '' }],
   people: [P('ou_e1', 'C&I'), P('ou_e2', 'Engineering'), P('ou_e3', 'O&M'), P('ou_ceo', 'CEO Office')],
   departmentMap: [{ lark: 'x', app: null }],
+  skippedTables: [],
   sources: [{ tableId: 't', label: 't', count: 4 }],
   warnings: [],
   freeThreshold: 3,

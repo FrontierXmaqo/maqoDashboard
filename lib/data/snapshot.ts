@@ -4,7 +4,7 @@
 import { CEO_ONLY_MODE, CONTACTS_CACHE_SECONDS, READ_CACHE_SECONDS, freeThreshold, overloadedAt } from '../../config/app.ts';
 import { mapDepartment } from '../../config/departments.ts';
 import { PROJECTS_SOURCE, TASK_SOURCES } from '../../config/task-sources.ts';
-import { LarkConfigError, larkEnv, usingTestBase } from '../lark/env.ts';
+import { LarkConfigError, larkEnv } from '../lark/env.ts';
 import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
 import { getDepartments, getUsers, listAllDepartments, listChildDepartments, listDepartmentUsers, listScopes, type LarkDepartment, type LarkUser } from '../lark/contacts.ts';
 import type { Person, Project, Snapshot, Task } from '../types.ts';
@@ -123,6 +123,7 @@ function emptySnapshot(warning: string): Snapshot {
     people: [],
     departmentMap: [],
     sources: [...TASK_SOURCES, PROJECTS_SOURCE].map((s) => ({ ...s, count: null })),
+    skippedTables: [],
     warnings: [warning],
     freeThreshold: freeThreshold(),
     overloadedAt: overloadedAt(),
@@ -148,26 +149,22 @@ export async function loadSnapshot(): Promise<Snapshot> {
     }
   }
   const warnings: string[] = [];
-  const sources: Snapshot['sources'] = [];
-  if (!fixturesEnabled() && usingTestBase()) warnings.push('Test data: this preview reads the test Base (LARK_BASE_TOKEN_TEST), not the live one.');
-
-  let tables: Sources;
+  let tables: Sources = { tasks: TASK_SOURCES, projects: PROJECTS_SOURCE, skipped: [] };
   try {
     tables = await resolveSources();
   } catch (e) {
-    // Only the test Base lists tables; its tables cannot be read without their IDs.
-    const snap = emptySnapshot(`Could not list the tables in the test Base, so no data was read. Press Refresh to try again. (${describe(e)})`);
-    return { ...snap, warnings: [...warnings, ...snap.warnings] };
+    warnings.push(`Could not list the tables in the Base, so only the configured tables are read: ${describe(e)}`);
   }
 
+  // Kept in table order: Settings lists them that way, and dedupe keeps the earlier copy.
+  const sources: Snapshot['sources'] = tables.tasks.map((s) => ({ ...s, count: null }));
   const taskLists = await Promise.all(
-    tables.tasks.map(async (src) => {
+    tables.tasks.map(async (src, i) => {
       try {
         const recs = await readTable(src.tableId);
-        sources.push({ ...src, count: recs.length });
+        sources[i].count = recs.length;
         return recs.map((r) => mapTask(r, src));
       } catch (e) {
-        sources.push({ ...src, count: null });
         warnings.push(`Could not read tasks from "${src.label}": ${describe(e)}`);
         return [];
       }
@@ -212,6 +209,7 @@ export async function loadSnapshot(): Promise<Snapshot> {
     people,
     departmentMap,
     sources,
+    skippedTables: tables.skipped,
     warnings,
     freeThreshold: freeThreshold(),
     overloadedAt: overloadedAt(),

@@ -103,6 +103,8 @@ export default function Settings() {
             </tbody>
           </table>
         </div>
+        <p className="muted">Every table in the Base with the fields Task, Task Responsible, Task Status and Department is read as a task table, so a new department table shows up here by itself.</p>
+        {snap.skippedTables.length > 0 && <p className="muted">Not read: {snap.skippedTables.map((t) => `${t.name} (${t.reason})`).join('; ')}.</p>}
         {snap.duplicatesSkipped > 0 && <p className="muted">{snap.duplicatesSkipped} rows in a later table exactly repeat a row in an earlier one (same task, status, deadline and Task Responsible) and are counted once.</p>}
         {snap.hiddenTasks > 0 && <p className="muted">{snap.hiddenTasks} tasks are hidden because they belong to people listed in config/hidden.ts (not Maqo staff).</p>}
         <p className="muted num">{M.people.length} people ({M.people.filter((p) => p.source === 'contacts').length} from the org chart), {M.projects.length} projects, {M.tasks.length} tasks. Status options the app writes: {TASK_STATUS_OPTIONS.join(', ')}.</p>
