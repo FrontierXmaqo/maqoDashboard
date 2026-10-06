@@ -29,14 +29,15 @@ Set values in Vercel only. Never commit them. `.env.example` lists the names.
 | `LARK_APP_ID` | Yes | Lark developer console > your app > Credentials & Basic Info > App ID |
 | `LARK_APP_SECRET` | Yes | Same page, App Secret. Server-only |
 | `LARK_BASE_TOKEN` | Yes | The Base's app token: the part after `/base/` in its URL (`NvYSbmF6aadBCvs0nhllBG5Zg1d`) |
+| `LARK_BASE_TOKEN_TEST` | No | Test Base token (a copy of the live Base). Set it for **Preview** only: previews then read the test Base, production keeps reading `LARK_BASE_TOKEN`. Copied tables are found by name, so keep table names as in the live Base |
 | `SESSION_SECRET` | When sign-in is on | 32+ random characters, e.g. `openssl rand -base64 48`. Signs the session cookie |
 | `FREE_THRESHOLD` | No | Open tasks at or below this = Free. Default 0 (Free = no open tasks, Working = 1–4, Overloaded = 5+) |
 | `LARK_WRITES_ENABLED` | No | `1` turns editing on (only when CEO-only mode is off). Leave empty until writes are approved |
 | `DEV_LOGIN` | No | Preview deployments only: `1` allows `/dev-login` mock sign-in. Never set in Production |
 
 Tick **Production** and **Preview** for the Lark variables if you want preview links to
-show real data. For write testing, point Preview's `LARK_BASE_TOKEN` at a **copy** of the
-Base, never the live one. After changing variables, redeploy: Vercel only reads them at
+show real data. For testing, set `LARK_BASE_TOKEN_TEST` (Preview) to a **copy** of the Base, and add the
+app to that copy as well. Previews then show a "Test data" banner. After changing variables, redeploy: Vercel only reads them at
 build time for new deployments.
 
 ## Lark setup (developer console: open.larksuite.com/app)

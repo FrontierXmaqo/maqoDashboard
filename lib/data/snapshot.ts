@@ -4,7 +4,7 @@
 import { CEO_ONLY_MODE, CONTACTS_CACHE_SECONDS, READ_CACHE_SECONDS, freeThreshold, overloadedAt } from '../../config/app.ts';
 import { mapDepartment } from '../../config/departments.ts';
 import { PROJECTS_SOURCE, TASK_SOURCES } from '../../config/task-sources.ts';
-import { LarkConfigError, larkEnv } from '../lark/env.ts';
+import { LarkConfigError, larkEnv, usingTestBase } from '../lark/env.ts';
 import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
 import { getDepartments, getUsers, listAllDepartments, listChildDepartments, listDepartmentUsers, listScopes, type LarkDepartment, type LarkUser } from '../lark/contacts.ts';
 import type { Person, Project, Snapshot, Task } from '../types.ts';
@@ -14,6 +14,7 @@ import { dropCrossTableDuplicates } from './dedupe.ts';
 import { hideConfigured, isHiddenPerson } from './hide.ts';
 import { display } from './parse.ts';
 import { fixtureRecords, fixturesEnabled } from './fixtures.ts';
+import { resolveSources, type Sources } from './sources.ts';
 
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -148,9 +149,17 @@ export async function loadSnapshot(): Promise<Snapshot> {
   }
   const warnings: string[] = [];
   const sources: Snapshot['sources'] = [];
+  if (!fixturesEnabled() && usingTestBase()) warnings.push('Test data: this preview reads the test Base (LARK_BASE_TOKEN_TEST), not the live one.');
+
+  let tables: Sources = { tasks: TASK_SOURCES, projects: PROJECTS_SOURCE };
+  try {
+    tables = await resolveSources();
+  } catch (e) {
+    warnings.push(`Could not list the tables in the Base: ${describe(e)}`);
+  }
 
   const taskLists = await Promise.all(
-    TASK_SOURCES.map(async (src) => {
+    tables.tasks.map(async (src) => {
       try {
         const recs = await readTable(src.tableId);
         sources.push({ ...src, count: recs.length });
@@ -168,12 +177,12 @@ export async function loadSnapshot(): Promise<Snapshot> {
 
   let projects: Project[] = [];
   try {
-    const recs = await readTable(PROJECTS_SOURCE.tableId);
+    const recs = await readTable(tables.projects.tableId);
     projects = recs.map(mapProject);
-    sources.push({ ...PROJECTS_SOURCE, count: recs.length });
+    sources.push({ ...tables.projects, count: recs.length });
   } catch (e) {
-    sources.push({ ...PROJECTS_SOURCE, count: null });
-    warnings.push(`Could not read projects from "${PROJECTS_SOURCE.label}": ${describe(e)}`);
+    sources.push({ ...tables.projects, count: null });
+    warnings.push(`Could not read projects from "${tables.projects.label}": ${describe(e)}`);
   }
 
   let org: OrgChart = { people: [], departments: [] };

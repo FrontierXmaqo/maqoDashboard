@@ -2,9 +2,10 @@
 // Shared by `npm run check-schema` and the /api/check-schema route. Read-only.
 
 import { PROJECTS_SOURCE, TASK_SOURCES, type TaskSource } from '../../config/task-sources.ts';
+import { matchTable } from '../data/sources.ts';
 import { PROJECT_FIELDS, TASK_FIELDS, TASK_IGNORED_FIELDS, fieldTypeName } from '../../config/schema.ts';
 import { listFields, listTables, type LarkField } from '../lark/bitable.ts';
-import { LarkConfigError, larkEnv } from '../lark/env.ts';
+import { LarkConfigError, larkEnv, usingTestBase } from '../lark/env.ts';
 import { LarkApiError } from '../lark/client.ts';
 import { compareTable, type TableReport } from './compare.ts';
 
@@ -30,14 +31,17 @@ function reportLines(r: TableReport, fields: LarkField[], showTypes: boolean): s
 async function check(lines: string[]): Promise<0 | 1> {
   const env = larkEnv();
   lines.push('Maqo Command Center: Lark Base schema check');
-  lines.push(`Base ${env.baseToken.slice(0, 6)}…  (read-only)`);
+  lines.push(`${usingTestBase() ? 'Test Base' : 'Base'} ${env.baseToken.slice(0, 6)}…  (read-only)`);
 
   const tables = await listTables(env.baseToken);
   const tableName = new Map(tables.map((t) => [t.table_id, t.name]));
+  const projects = matchTable(PROJECTS_SOURCE, tables);
+  // On the test Base the projects table has its own ID; the task link must point at that one.
+  const taskFields = TASK_FIELDS.map((f) => (f.linkTable === PROJECTS_SOURCE.tableId ? { ...f, linkTable: projects.tableId } : f));
 
   const sources: { src: TaskSource; kind: 'task' | 'project' }[] = [
-    ...TASK_SOURCES.map((src) => ({ src, kind: 'task' as const })),
-    { src: PROJECTS_SOURCE, kind: 'project' as const },
+    ...TASK_SOURCES.map((s) => ({ src: matchTable(s, tables), kind: 'task' as const })),
+    { src: projects, kind: 'project' as const },
   ];
 
   let errors = 0;
@@ -53,7 +57,7 @@ async function check(lines: string[]): Promise<0 | 1> {
     const fields = await listFields(env.baseToken, src.tableId);
     const report =
       kind === 'task'
-        ? compareTable(src.tableId, `${src.label} — "${name}"`, TASK_FIELDS, fields, TASK_IGNORED_FIELDS)
+        ? compareTable(src.tableId, `${src.label} — "${name}"`, taskFields, fields, TASK_IGNORED_FIELDS)
         : compareTable(src.tableId, `${src.label} — "${name}" (projects)`, PROJECT_FIELDS, fields);
 
     if (kind === 'task' && !fields.some((f) => f.field_name === 'Department' || f.field_name === 'Departments')) {
