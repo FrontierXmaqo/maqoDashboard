@@ -1,13 +1,15 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useData } from '../DataProvider';
 import MyWork from './MyWork';
 import { DeptChips, Icon, Legend, LoadCell, Pill, Seg, SegBar, Stepper, TaskTable, Who, projectMeta, NotSet } from '../ui';
 import { dayToIso, fd, fdy, isoToDay, monthRange, people, plural, weekRange, weekday } from '../../lib/dates';
-import { STAGES, STATUS, personInDept, type Model, type StatusKey, type Tone } from '../../lib/model';
+import { STAGES, STATUS, personInDept, taskInDept, type Model, type StatusKey, type Tone } from '../../lib/model';
 import type { Stage } from '../../lib/types';
+import type { SalesSummary } from '../../lib/sales-model';
+import { rmk, kwp } from './SalesBits';
 
 type Att = { sev: number; tone: Tone; tag: string; title: string; meta: string; ref: ['task' | 'emp', string] };
 
@@ -267,10 +269,69 @@ function ProgressCard({ M, range, from, to }: { M: Model; range: Range; from: st
   );
 }
 
-export default function Overview() {
+export default function Overview({ sales }: { sales: SalesSummary | null }) {
   const { M } = useData();
   if (M.viewer.role === 'employee') return <MyWork />;
+  if (M.viewer.role === 'ceo' && sales) return <CeoOverview sales={sales} />;
   return <TeamOverview />;
+}
+
+function DeptCard({ href, title, big, bigL, subs, flag }: { href: string; title: string; big: string | number; bigL: string; subs: [string | number, string][]; flag?: ReactNode }) {
+  return (
+    <Link className="dcard" href={href}>
+      <span className="spread"><b>{title}</b>{flag}</span>
+      <span><span className="big num" style={{ display: 'block' }}>{big}</span><span className="muted">{bigL}</span></span>
+      <span className="sub">{subs.map(([v, l]) => <span key={l}><b className="num">{v}</b><span className="muted">{l}</span></span>)}</span>
+    </Link>
+  );
+}
+
+const NOT_CONNECTED = ['Marketing', 'Licensing', 'Procurement', 'Finance', 'HR'];
+
+/** CEO view: every department at a glance, then who is free. Layout follows the Department Views prototype. */
+function CeoOverview({ sales }: { sales: SalesSummary }) {
+  const { M } = useData();
+  const [teamStatus, setTeamStatus] = useState<StatusKey | 'all'>('all');
+  const taskCard = (d: string) => {
+    const open = M.sTasks.filter((t) => !t.done && taskInDept(t, d));
+    const od = open.filter((t) => t.overdue).length;
+    const ppl = M.sPeople.filter((p) => personInDept(p, d));
+    return (
+      <DeptCard key={d} href={`/tasks?dept=${encodeURIComponent(d)}`} title={d} big={open.length} bigL="open tasks"
+        subs={[[od, 'overdue'], [`${ppl.filter((p) => p.key === 'free').length} of ${ppl.length}`, 'people free']]}
+        flag={od ? <Pill tone="r">Overdue</Pill> : undefined} />
+    );
+  };
+  const { resi, ci } = sales;
+  return (
+    <>
+      <div className="topbar">
+        <div>
+          <h1 className="title">CEO overview</h1>
+          <p className="muted">{weekday(M.t0)}, {fdy(M.t0)}. Every department at a glance. Click a card to open it.</p>
+        </div>
+      </div>
+      {sales.warnings.map((w) => <div key={w} className="banner warn" role="status">{w}</div>)}
+      <AttentionCard M={M} />
+      <div className="dgrid">
+        {resi ? (
+          <DeptCard href="/residential" title="Residential sales" big={kwp(resi.kwp)} bigL={`${resi.year}, ${plural(resi.projects, 'project')}`} subs={[[resi.ongoing, 'ongoing'], [resi.completed, 'completed']]} />
+        ) : (
+          <div className="dcard off"><b>Residential sales</b><p className="muted">No projects came back from Lark.</p></div>
+        )}
+        {ci ? (
+          <DeptCard href="/ci" title="C&I sales" big={rmk(ci.closedRm)} bigL={`closed ${ci.year} (${ci.closedN})`}
+            subs={[[ci.target ? `${Math.round((ci.closedRm / ci.target) * 100)}%` : '—', ci.target ? `of ${rmk(ci.target)} target` : 'no target set'], [rmk(ci.hotRm), `hot leads (${ci.hotN})`]]} />
+        ) : (
+          <div className="dcard off"><b>C&amp;I sales</b><p className="muted">No cases came back from Lark.</p></div>
+        )}
+        {taskCard('O&M')}
+        {taskCard('Engineering')}
+        {NOT_CONNECTED.map((d) => <div key={d} className="dcard off"><b>{d}</b><p className="muted">Not connected to Lark yet.</p></div>)}
+      </div>
+      <TeamCard M={M} status={teamStatus} setStatus={setTeamStatus} />
+    </>
+  );
 }
 
 function TeamOverview() {

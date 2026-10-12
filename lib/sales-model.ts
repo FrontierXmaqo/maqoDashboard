@@ -99,3 +99,26 @@ export function ciByPerson(cases: CiCase[], targets: CiTarget[]): CiPersonRow[] 
     .filter((r) => r.closedN || r.hotRm || r.warmRm || r.coldRm || r.lostN || r.target)
     .sort((a, b) => b.closedRm - a.closedRm || b.hotRm - a.hotRm);
 }
+
+/** The few numbers the CEO overview cards need, so the full rows stay off that page. */
+export type SalesSummary = {
+  resi: { year: number; kwp: number; projects: number; ongoing: number; completed: number } | null;
+  ci: { year: number; closedRm: number; closedN: number; target: number; hotRm: number; hotN: number } | null;
+  warnings: string[];
+};
+
+export function salesSummary(resi: ResiProject[], cases: CiCase[], targets: CiTarget[], warnings: string[]): SalesSummary {
+  const latest = (ys: (number | null)[]) => Math.max(0, ...ys.filter((y): y is number => y != null)) || null;
+  const ry = latest(resi.map((r) => r.year));
+  const rl = resi.filter((r) => r.year === ry && !(r.status ?? '').startsWith('CANCEL'));
+  const cy = latest(cases.map((c) => c.year));
+  const cl = cases.filter((c) => c.year === cy);
+  const tot = (l: CiCase[]) => l.reduce((s, c) => s + (c.total ?? 0), 0);
+  const closed = cl.filter((c) => c.status === 'closed');
+  const hot = cl.filter((c) => c.status === 'hot');
+  return {
+    resi: ry ? { year: ry, kwp: rl.reduce((s, r) => s + (r.kwp ?? 0), 0), projects: rl.length, ongoing: rl.filter(resiOpen).length, completed: rl.filter((r) => r.status === 'COMPLETED').length } : null,
+    ci: cy ? { year: cy, closedRm: tot(closed), closedN: closed.length, target: targets.reduce((s, t) => s + (t.target ?? 0), 0), hotRm: tot(hot), hotN: hot.length } : null,
+    warnings,
+  };
+}
