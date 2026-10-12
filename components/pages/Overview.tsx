@@ -408,7 +408,7 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
   const salesRm = (ci?.closedRm ?? 0) + (resi?.rm ?? 0);
   const soldKwp = (resi?.kwp ?? 0) + (ci?.closedKwp ?? 0);
   const openTasks = M.sTasks.filter((t) => !t.done).length;
-  const year = resi?.year ?? ci?.year ?? new Date(sales.at).getFullYear();
+  const year = resi?.year ?? new Date(sales.at).getFullYear();
   const resiTarget = resi?.target.rm && resi.rm != null ? { done: resi.rm, target: resi.target.rm, fmt: rmk } : { done: resi?.kwp ?? 0, target: resi?.target.kwp ?? null, fmt: kwp };
   return (
     <>
@@ -422,7 +422,7 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
 
       <section className="kpis k5" aria-label="Headline numbers">
         <Link className="kpi big" href="/ci" style={{ textDecoration: 'none' }}>
-          <span className="muted">Sales closed {year}</span>
+          <span className="muted">Sales achieved</span>
           <span className="v num">{rmk(salesRm)}</span>
           <span className="muted">{resi?.rm != null ? `C&I ${rmk(ci?.closedRm ?? 0)} + Resi ${rmk(resi.rm)}` : 'C&I only. Resi price not in Lark yet'}</span>
         </Link>
@@ -431,7 +431,7 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
           <span className="muted">Resi {kwp(resi?.kwp ?? 0)} + C&amp;I {kwp(ci?.closedKwp ?? 0)}</span>
         </Link>
         <Link className="kpi" href="/ci" style={{ textDecoration: 'none' }}>
-          <span className="muted">C&amp;I hot pipeline</span><span className="v num">{rmk(ci?.hotRm ?? 0)}</span><span className="muted">{plural(ci?.hotN ?? 0, 'hot lead')}</span>
+          <span className="muted">C&amp;I hot pipeline</span><span className="v num">{rmk(ci?.hotRm ?? 0)}</span><span className="muted">{rmk(ci?.pipelineRm ?? 0)} total not yet closed</span>
         </Link>
         <Link className="kpi" href="/residential" style={{ textDecoration: 'none' }}>
           <span className="muted">Residential projects {year}</span><span className="v num">{resi?.projects ?? 0}</span><span className="muted">{resi?.ongoing ?? 0} ongoing, {resi?.completed ?? 0} completed</span>
@@ -457,8 +457,8 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
           <div className="dcard off"><b>Residential sales</b><p className="muted">No projects came back from Lark.</p></div>
         )}
         {ci ? (
-          <DeptCard href="/ci" title="C&I sales" big={rmk(ci.closedRm)} bigL={`closed ${ci.year}, ${kwp(ci.closedKwp)}`}
-            subs={[[ci.closedN, 'deals closed'], [rmk(ci.hotRm), `hot leads (${ci.hotN})`]]} />
+          <DeptCard href="/ci" title="C&I sales" big={rmk(ci.closedRm)} bigL={`sales achieved, ${kwp(ci.closedKwp)}`}
+            subs={[[ci.target ? `${Math.round((ci.closedRm / ci.target) * 100)}%` : '—', 'of target'], [rmk(ci.hotRm), 'hot leads']]} />
         ) : (
           <div className="dcard off"><b>C&amp;I sales</b><p className="muted">No cases came back from Lark.</p></div>
         )}

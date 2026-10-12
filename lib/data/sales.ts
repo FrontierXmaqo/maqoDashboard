@@ -3,13 +3,12 @@
 
 import { READ_CACHE_SECONDS } from '../../config/app.ts';
 import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
-import { CI_BASE, RESI_BASE, ciStatus, type CiCase, type CiTarget, type ResiProject, type SalesData } from '../sales-model.ts';
+import { CI_BASE, RESI_BASE, type CiTarget, type ResiProject, type SalesData } from '../sales-model.ts';
 import { cached } from './cache.ts';
 import { datetime, display, num, single, users } from './parse.ts';
 import { fixturesEnabled } from './fixtures.ts';
 
 const RESI_2026 = 'tblMhiNP4OO3h3oA';
-const CI_CASES = 'tblSVoYfNQq4BoDm'; // (Overall)SC
 const CI_TARGETS = 'tbliUv5oMV1AVWCS';
 
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -46,22 +45,16 @@ export function mapResi(rec: LarkRecord, fixedYear: number | null): ResiProject 
   };
 }
 
-export function mapCi(rec: LarkRecord): CiCase {
+export function mapTarget(rec: LarkRecord): CiTarget {
   const f = rec.fields ?? {};
-  const kwp = num(f['System Size (kWp)']);
-  const rmPerKwp = num(f['RM/kWP']);
-  const statusRaw = single(f['Client Status']);
   return {
-    id: rec.record_id,
-    client: display(f['Client Name']),
-    sales: users(f['Sales PIC']),
-    kwp,
-    rmPerKwp,
-    total: num(f['Total (RM)']) ?? (kwp != null && rmPerKwp != null ? kwp * rmPerKwp : null),
-    status: ciStatus(statusRaw),
-    statusRaw,
-    year: Number(single(f['Year'])) || yearOf(datetime(f['Case Entry Date'])),
-    workflow: display(f['SC Workflow']),
+    sales: users(f['SC']),
+    target: num(f['Sales Target (RM)']),
+    achievement: num(f['Sales Achivement']) ?? 0,
+    closedKwp: num(f['Closes Sales (kWp)']) ?? 0,
+    hotRm: num(f['Sales Pipeline (Hot Lead)']) ?? 0,
+    pipelineRm: num(f['Pipeline (exclude Close Case)']) ?? 0,
+    pipelineKwp: num(f['Pipeline (kWp)']) ?? 0,
   };
 }
 
@@ -74,19 +67,11 @@ export async function loadResi(): Promise<SalesData<ResiProject[]>> {
   }
 }
 
-export async function loadCi(): Promise<SalesData<{ cases: CiCase[]; targets: CiTarget[] }>> {
-  const warnings: string[] = [];
-  const get = async <T,>(table: string, label: string, map: (r: LarkRecord) => T) => {
-    try {
-      return (await read(CI_BASE, table)).map(map);
-    } catch (e) {
-      warnings.push(`Could not read "${label}": ${describe(e)}`);
-      return [];
-    }
-  };
-  const [cases, targets] = await Promise.all([
-    get(CI_CASES, '(Overall)SC', mapCi),
-    get(CI_TARGETS, 'Target', (r): CiTarget => ({ sales: users(r.fields?.['SC']), target: num(r.fields?.['Sales Target (RM)']) })),
-  ]);
-  return { generatedAt: Date.now(), rows: { cases, targets }, warnings };
+export async function loadCi(): Promise<SalesData<CiTarget[]>> {
+  // The Target table holds the C&I team's own per-person totals, so the dashboard shows the same numbers.
+  try {
+    return { generatedAt: Date.now(), rows: (await read(CI_BASE, CI_TARGETS)).map(mapTarget), warnings: [] };
+  } catch (e) {
+    return { generatedAt: Date.now(), rows: [], warnings: [`Could not read the C&I "Target" table: ${describe(e)}`] };
+  }
 }
