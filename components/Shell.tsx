@@ -15,6 +15,8 @@ export const PAGES: { href: string; label: string; ic: string; roles?: string[] 
   { href: '/marketing', label: 'Marketing', ic: 'rep' },
   { href: '/om', label: 'O&M', ic: 'dept' },
   { href: '/engineering', label: 'Engineering', ic: 'dept' },
+  { href: '/licensing', label: 'Licensing', ic: 'dept' },
+  { href: '/procurement', label: 'Procurement', ic: 'dept' },
   { href: '/departments', label: 'Departments', ic: 'dept' },
   { href: '/employees', label: 'Employees', ic: 'people' },
   { href: '/calendar', label: 'Calendar', ic: 'cal' },
