@@ -5,7 +5,7 @@ import type { PersonRef } from './types.ts';
 export const RESI_BASE = 'Ec88b000TaIsdGsEznLl8i2dgve';
 export const CI_BASE = 'YLOSbdnx6a53O9sVwCflo8adgad';
 export const RESI_LARK_URL = `https://bsgyt70achks.sg.larksuite.com/base/${RESI_BASE}?table=tblMhiNP4OO3h3oA&view=vewuXiMDmU`;
-export const CI_LARK_URL = `https://bsgyt70achks.sg.larksuite.com/base/${CI_BASE}?table=tblSVoYfNQq4BoDm`;
+export const CI_LARK_URL = `https://bsgyt70achks.sg.larksuite.com/base/${CI_BASE}?table=tbliUv5oMV1AVWCS&view=vewh2hE6ug`;
 
 /**
  * Residential has no target in Lark, so the team's yearly target lives here (one number for the team).
@@ -37,30 +37,20 @@ export type ResiProject = {
   installedAt: number | null;
 };
 
-export type CiStatus = 'closed' | 'hot' | 'warm' | 'cold' | 'lost' | 'other';
-
-export type CiCase = {
-  id: string;
-  client: string;
+/** One row of the C&I Target table: the team's own numbers per sales consultant (SC). */
+export type CiTarget = {
   sales: PersonRef[];
-  kwp: number | null;
-  rmPerKwp: number | null;
-  total: number | null;
-  status: CiStatus;
-  statusRaw: string | null;
-  year: number | null;
-  workflow: string;
+  target: number | null;
+  /** Sales Achivement (RM): closed sales. */
+  achievement: number;
+  closedKwp: number;
+  hotRm: number;
+  /** Pipeline (exclude Close Case), RM. */
+  pipelineRm: number;
+  pipelineKwp: number;
 };
 
-export type CiTarget = { sales: PersonRef[]; target: number | null };
-
 export type SalesData<T> = { generatedAt: number; rows: T; warnings: string[] };
-
-export function ciStatus(raw: string | null): CiStatus {
-  const s = (raw ?? '').trim().toLowerCase();
-  for (const k of ['closed', 'hot', 'warm', 'cold', 'lost'] as const) if (s.startsWith(k)) return k;
-  return 'other';
-}
 
 // ---------- summaries (pure, unit-tested) ----------
 
@@ -92,37 +82,10 @@ export function resiByPerson(list: ResiProject[]): ResiPersonRow[] {
 
 export const resiOpen = (r: ResiProject) => OPEN_RESI(r.status);
 
-export type CiPersonRow = { p: PersonRef; closedRm: number; closedKwp: number; closedN: number; hotRm: number; warmRm: number; coldRm: number; lostN: number; target: number | null };
-
-export function ciByPerson(cases: CiCase[], targets: CiTarget[]): CiPersonRow[] {
-  const m = new Map<string, CiPersonRow>();
-  const row = (p: PersonRef) => {
-    let r = m.get(p.openId);
-    if (!r) m.set(p.openId, (r = { p, closedRm: 0, closedKwp: 0, closedN: 0, hotRm: 0, warmRm: 0, coldRm: 0, lostN: 0, target: null }));
-    return r;
-  };
-  for (const c of cases) {
-    const r = row(c.sales[0] ?? { openId: '', name: 'No sales PIC', avatarUrl: null });
-    if (c.status === 'closed') {
-      r.closedRm += c.total ?? 0;
-      r.closedKwp += c.kwp ?? 0;
-      r.closedN++;
-    } else if (c.status === 'hot') r.hotRm += c.total ?? 0;
-    else if (c.status === 'warm') r.warmRm += c.total ?? 0;
-    else if (c.status === 'cold') r.coldRm += c.total ?? 0;
-    else if (c.status === 'lost') r.lostN++;
-  }
-  for (const t of targets) if (t.sales[0] && t.target != null) row(t.sales[0]).target = (row(t.sales[0]).target ?? 0) + t.target;
-  // People with only status-less cases and no target add nothing to the table.
-  return [...m.values()]
-    .filter((r) => r.closedN || r.hotRm || r.warmRm || r.coldRm || r.lostN || r.target)
-    .sort((a, b) => b.closedRm - a.closedRm || b.hotRm - a.hotRm);
-}
-
 /** The few numbers the CEO overview cards need, so the full rows stay off that page. */
 export type SalesSummary = {
   resi: { year: number; kwp: number; projects: number; ongoing: number; completed: number; rm: number | null; target: { rm: number | null; kwp: number | null } } | null;
-  ci: { year: number; closedRm: number; closedKwp: number; closedN: number; target: number; hotRm: number; hotN: number } | null;
+  ci: { closedRm: number; closedKwp: number; target: number; hotRm: number; pipelineRm: number } | null;
   /** Salespeople with their latest-year numbers, so the CEO sees them even when the org chart can't. */
   people: { p: PersonRef; dept: 'Residential' | 'C&I'; projects: number; kwp: number; closedRm: number; hotRm: number }[];
   /** ms when read, for pace marks. */
@@ -132,21 +95,17 @@ export type SalesSummary = {
   warnings: string[];
 };
 
-/** Targets with no salesperson are skipped, as on the C&I page, so both show the same total. */
-export function salesSummary(resi: ResiProject[], cases: CiCase[], targets: CiTarget[], warnings: string[]): SalesSummary {
+/** C&I rows with no salesperson are skipped, as on the C&I page, so both show the same totals. */
+export function salesSummary(resi: ResiProject[], targets: CiTarget[], warnings: string[]): SalesSummary {
   const latest = (ys: (number | null)[]) => Math.max(0, ...ys.filter((y): y is number => y != null)) || null;
   const ry = latest(resi.map((r) => r.year));
   const rl = resi.filter((r) => r.year === ry && !(r.status ?? '').startsWith('CANCEL'));
-  const cy = latest(cases.map((c) => c.year));
-  const cl = cases.filter((c) => c.year === cy);
-  const tot = (l: CiCase[]) => l.reduce((s, c) => s + (c.total ?? 0), 0);
-  const closed = cl.filter((c) => c.status === 'closed');
-  const hot = cl.filter((c) => c.status === 'hot');
+  const ci = targets.filter((t) => t.sales[0]);
+  const sum = (f: (t: CiTarget) => number) => ci.reduce((s, t) => s + f(t), 0);
+  const target = sum((t) => t.target ?? 0);
+  const closedRm = sum((t) => t.achievement);
   const alerts: SalesSummary['alerts'] = [];
-  const target = targets.reduce((s, t) => s + (t.sales[0] ? t.target ?? 0 : 0), 0);
-  if (cy && target) alerts.push({ text: `C&I closed RM ${Math.round(tot(closed) / 1e3)}k of RM ${(target / 1e6).toFixed(1)}M target (${Math.round((tot(closed) / target) * 100)}%)`, href: '/ci' });
-  const noStatus = cl.filter((c) => c.status === 'other').length;
-  if (noStatus) alerts.push({ text: `${noStatus} C&I cases in ${cy} have no client status`, href: '/ci' });
+  if (target) alerts.push({ text: `C&I sales RM ${(closedRm / 1e6).toFixed(2)}M of RM ${(target / 1e6).toFixed(1)}M target (${Math.round((closedRm / target) * 100)}%)`, href: '/ci' });
   return {
     at: Date.now(),
     alerts,
@@ -163,9 +122,9 @@ export function salesSummary(resi: ResiProject[], cases: CiCase[], targets: CiTa
       : null,
     people: [
       ...resiByPerson(resi.filter((r) => r.year === ry)).filter((r) => r.p.openId).map((r) => ({ p: r.p, dept: 'Residential' as const, projects: r.projects, kwp: r.kwp, closedRm: r.rm, hotRm: 0 })),
-      ...ciByPerson(cl, []).filter((r) => r.p.openId).map((r) => ({ p: r.p, dept: 'C&I' as const, projects: r.closedN, kwp: r.closedKwp, closedRm: r.closedRm, hotRm: r.hotRm })),
+      ...ci.map((t) => ({ p: t.sales[0], dept: 'C&I' as const, projects: 0, kwp: t.closedKwp, closedRm: t.achievement, hotRm: t.hotRm })),
     ],
-    ci: cy ? { year: cy, closedRm: tot(closed), closedKwp: closed.reduce((s, c) => s + (c.kwp ?? 0), 0), closedN: closed.length, target, hotRm: tot(hot), hotN: hot.length } : null,
+    ci: ci.length ? { closedRm, closedKwp: sum((t) => t.closedKwp), target, hotRm: sum((t) => t.hotRm), pipelineRm: sum((t) => t.pipelineRm) } : null,
     warnings,
   };
 }

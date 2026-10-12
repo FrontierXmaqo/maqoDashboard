@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mapCi, mapResi } from '../lib/data/sales.ts';
-import { ciByPerson, ciStatus, resiByPerson, salesSummary } from '../lib/sales-model.ts';
+import { mapResi, mapTarget } from '../lib/data/sales.ts';
+import { resiByPerson, salesSummary } from '../lib/sales-model.ts';
 
 const amy = [{ id: 'ou_a', name: 'Amy' }];
 const ben = [{ id: 'ou_b', name: 'Ben' }];
@@ -20,35 +20,24 @@ test('resi rows from both yearly tables, cancelled kept out of kWp', () => {
   assert.deepEqual(resiByPerson([now, cancel]), [{ p: { openId: 'ou_a', name: 'Amy', avatarUrl: null }, projects: 2, kwp: 6, rm: 0, pricedKwp: 0, ongoing: 1, completed: 0, cancelled: 1 }]);
 });
 
-test('C&I statuses tolerate the messy option names', () => {
-  assert.equal(ciStatus('Closed Sales '), 'closed');
-  assert.equal(ciStatus('Warm Lead (Under Business Development) '), 'warm');
-  assert.equal(ciStatus('Cold Lead (On Hold / Lost Case)'), 'cold');
-  assert.equal(ciStatus(null), 'other');
+test('C&I Target rows read the lookup and formula shapes Lark returns', () => {
+  const t = mapTarget({ record_id: 't1', fields: { SC: amy, 'Sales Target (RM)': 16000000, 'Sales Achivement': { type: 2, value: [3979390.18] }, 'Closes Sales (kWp)': { type: 2, value: [2709.2] }, 'Sales Pipeline (Hot Lead)': { type: 2, value: [1589189.1] } } });
+  assert.equal(t.target, 16000000);
+  assert.equal(t.achievement, 3979390.18);
+  assert.equal(t.closedKwp, 2709.2);
+  assert.equal(t.hotRm, 1589189.1);
+  assert.equal(t.pipelineKwp, 0); // missing lookup reads as 0
 });
 
-test('C&I totals fall back to kWp × RM/kWp and targets add up per person', () => {
-  const a = mapCi({ record_id: 'c1', fields: { 'Sales PIC': amy, 'Client Status': 'Closed Sales', 'System Size (kWp)': 100, 'RM/kWP': 2000, Year: '2026' } });
-  const b = mapCi({ record_id: 'c2', fields: { 'Sales PIC': ben, 'Client Status': 'Hot Lead ', 'Total (RM)': 50000, Year: '2026' } });
-  assert.equal(a.total, 200000);
-  assert.equal(a.year, 2026);
-  const rows = ciByPerson([a, b], [{ sales: [{ openId: 'ou_a', name: 'Amy', avatarUrl: null }], target: 500000 }]);
-  assert.equal(rows[0].p.name, 'Amy');
-  assert.equal(rows[0].closedRm, 200000);
-  assert.equal(rows[0].target, 500000);
-  assert.equal(rows[1].hotRm, 50000);
-});
-
-test('overview summary uses the latest year and skips cancelled projects', () => {
+test('overview summary uses the latest year, skips cancelled projects and C&I rows with no SC', () => {
   const r = (year: number, kwp: number, status: string | null) => mapResi({ record_id: String(Math.random()), fields: { 'SYSTEM SIZE(KWP)': kwp, 'PROJECT STATUS': status } }, year);
-  const withPic = mapResi({ record_id: 'p', fields: { 'SALES PIC': amy, 'SYSTEM SIZE(KWP)': 4 } }, 2026);
-  assert.deepEqual(salesSummary([withPic], [], [], []).people, [{ p: { openId: 'ou_a', name: 'Amy', avatarUrl: null }, dept: 'Residential', projects: 1, kwp: 4, closedRm: 0, hotRm: 0 }]);
-  const c = (status: string, total: number, year: string) => mapCi({ record_id: String(Math.random()), fields: { 'Client Status': status, 'Total (RM)': total, Year: year } });
-  const s = salesSummary([r(2026, 5, 'COMPLETED'), r(2026, 9, 'CANCEL BY CLIENT'), r(2025, 7, null)], [c('Closed Sales', 100, '2026'), c('Hot Lead', 40, '2026'), c('Closed Sales', 999, '2025')], [{ sales: [{ openId: 'ou_a', name: 'Amy', avatarUrl: null }], target: 1000 }, { sales: [], target: 5 }], []);
+  const t = (sc: unknown[], target: number, ach: number) => mapTarget({ record_id: String(Math.random()), fields: { SC: sc, 'Sales Target (RM)': target, 'Sales Achivement': { type: 2, value: [ach] }, 'Sales Pipeline (Hot Lead)': { type: 2, value: [40] } } });
+  const s = salesSummary([r(2026, 5, 'COMPLETED'), r(2026, 9, 'CANCEL BY CLIENT'), r(2025, 7, null)], [t(amy, 1000, 100), t([], 5000, 999)], []);
   assert.deepEqual(s.resi, { year: 2026, kwp: 5, projects: 1, ongoing: 0, completed: 1, rm: null, target: { rm: null, kwp: null } });
-  assert.deepEqual(s.ci, { year: 2026, closedRm: 100, closedKwp: 0, closedN: 1, target: 1000, hotRm: 40, hotN: 1 });
-  assert.deepEqual(s.people, []); // no Sales PIC on these rows, so no one to list
-  assert.deepEqual(s.alerts.map((x) => x.text), ['C&I closed RM 0k of RM 0.0M target (10%)']);
+  assert.deepEqual(s.ci, { closedRm: 100, closedKwp: 0, target: 1000, hotRm: 40, pipelineRm: 0 });
+  assert.deepEqual(s.alerts.map((x) => x.href), ['/ci']);
+  assert.equal(s.people.length, 1);
+  assert.equal(s.people[0].dept, 'C&I');
 });
 
 test('residential selling price is summed per person when the column exists', () => {

@@ -4,7 +4,6 @@
 import { runSchemaCheck } from '../../../lib/schema/run.ts';
 import { listFields, listTables } from '../../../lib/lark/bitable.ts';
 import { fieldTypeName } from '../../../config/schema.ts';
-import { searchAllRecords } from '../../../lib/lark/records.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,14 +30,6 @@ async function salesBaseLines(): Promise<string[]> {
       lines.push(`  ✗ Cannot read: ${e instanceof Error ? e.message : String(e)}`);
       lines.push('  Add the dashboard app to this Base (Base ⋯ menu > add app / collaborator) with read access.');
     }
-  }
-  // shortcut: temporary value sample of the C&I Target table, remove once mapped.
-  try {
-    const recs = await searchAllRecords(SALES_BASES[1].token, 'tbliUv5oMV1AVWCS');
-    lines.push(`\n--- C&I Target rows (${recs.length})`);
-    for (const r of recs) lines.push('  ' + JSON.stringify(r.fields).slice(0, 1500));
-  } catch (e) {
-    lines.push(`  target sample failed: ${e instanceof Error ? e.message : String(e)}`);
   }
   return lines;
 }
