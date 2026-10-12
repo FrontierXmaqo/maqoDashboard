@@ -10,13 +10,15 @@ import { larkListAll } from './client.ts';
 export type LarkRecord = {
   record_id: string;
   fields: Record<string, unknown>;
+  /** Only when searched with automatic_fields: when the row was added (ms). */
+  created_time?: number;
 };
 
-export function searchAllRecords(appToken: string, tableId: string): Promise<LarkRecord[]> {
+export function searchAllRecords(appToken: string, tableId: string, body: { automatic_fields?: boolean } = {}): Promise<LarkRecord[]> {
   return larkListAll<LarkRecord>(
     `/bitable/v1/apps/${encodeURIComponent(appToken)}/tables/${encodeURIComponent(tableId)}/records/search`,
     { user_id_type: 'open_id' },
     500,
-    { method: 'POST', body: {} },
+    { method: 'POST', body },
   );
 }

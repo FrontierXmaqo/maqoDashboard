@@ -1,0 +1,92 @@
+// Residential and C&I sales loaders, reading from their own Lark Bases. Server-only, read-only, CEO-only.
+// Never throws: a table that can't be read becomes a warning and an empty list.
+
+import { READ_CACHE_SECONDS } from '../../config/app.ts';
+import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
+import { CI_BASE, RESI_BASE, ciStatus, type CiCase, type CiTarget, type ResiProject, type SalesData } from '../sales-model.ts';
+import { cached } from './cache.ts';
+import { datetime, display, num, single, users } from './parse.ts';
+import { fixturesEnabled } from './fixtures.ts';
+
+const RESI_2026 = 'tblMhiNP4OO3h3oA';
+const RESI_OLD = 'tbl2BNmHHAo0fJlC';
+const CI_CASES = 'tblSVoYfNQq4BoDm'; // (Overall)SC
+const CI_TARGETS = 'tbliUv5oMV1AVWCS';
+
+const describe = (e: unknown) => (e instanceof Error ? e.message : String(e));
+const yearOf = (ms: number | null) => (ms == null ? null : new Date(ms + 8 * 3600_000).getUTCFullYear());
+
+function read(base: string, table: string): Promise<LarkRecord[]> {
+  if (fixturesEnabled()) return Promise.resolve([]);
+  return cached(`sales:${table}`, READ_CACHE_SECONDS, () => searchAllRecords(base, table, { automatic_fields: true }));
+}
+
+/** Field names differ in case between the yearly tables; first non-empty match wins. */
+const pick = (f: Record<string, unknown>, ...names: string[]) => names.map((n) => f[n]).find((v) => v != null && v !== '');
+
+export function mapResi(rec: LarkRecord, fixedYear: number | null): ResiProject {
+  const f = rec.fields ?? {};
+  const installedAt = datetime(pick(f, 'EXECUTED DATE INSTALLATION ( DAY 1)', 'Executed Date Installation'));
+  return {
+    id: rec.record_id,
+    code: display(pick(f, 'PROJECT CODE', 'Project Code')),
+    client: display(pick(f, 'APPLICATION NAME', 'Application Name')),
+    sales: users(pick(f, 'SALES PIC', 'Sales Pic')),
+    kwp: num(pick(f, 'SYSTEM SIZE(KWP)', 'System Size (kWp)')),
+    status: single(pick(f, 'PROJECT STATUS', 'Status'))?.toUpperCase() ?? null,
+    stage: display(pick(f, 'FLOW', 'Flow')),
+    year: fixedYear ?? yearOf(installedAt),
+    createdAt: rec.created_time ?? null,
+    installedAt,
+  };
+}
+
+export function mapCi(rec: LarkRecord): CiCase {
+  const f = rec.fields ?? {};
+  const kwp = num(f['System Size (kWp)']);
+  const rmPerKwp = num(f['RM/kWP']);
+  const statusRaw = single(f['Client Status']);
+  return {
+    id: rec.record_id,
+    client: display(f['Client Name']),
+    sales: users(f['Sales PIC']),
+    kwp,
+    rmPerKwp,
+    total: num(f['Total (RM)']) ?? (kwp != null && rmPerKwp != null ? kwp * rmPerKwp : null),
+    status: ciStatus(statusRaw),
+    statusRaw,
+    year: Number(single(f['Year'])) || yearOf(datetime(f['Case Entry Date'])),
+    workflow: display(f['SC Workflow']),
+  };
+}
+
+export async function loadResi(): Promise<SalesData<ResiProject[]>> {
+  const warnings: string[] = [];
+  const get = async (table: string, label: string, year: number | null) => {
+    try {
+      return (await read(RESI_BASE, table)).map((r) => mapResi(r, year));
+    } catch (e) {
+      warnings.push(`Could not read "${label}": ${describe(e)}`);
+      return [];
+    }
+  };
+  const [now, old] = await Promise.all([get(RESI_2026, 'PROJECT RESIDENTIAL 2026', 2026), get(RESI_OLD, 'PROJECT RESIDENTIAL 2022 - 2025', null)]);
+  return { generatedAt: Date.now(), rows: [...now, ...old], warnings };
+}
+
+export async function loadCi(): Promise<SalesData<{ cases: CiCase[]; targets: CiTarget[] }>> {
+  const warnings: string[] = [];
+  const get = async <T,>(table: string, label: string, map: (r: LarkRecord) => T) => {
+    try {
+      return (await read(CI_BASE, table)).map(map);
+    } catch (e) {
+      warnings.push(`Could not read "${label}": ${describe(e)}`);
+      return [];
+    }
+  };
+  const [cases, targets] = await Promise.all([
+    get(CI_CASES, '(Overall)SC', mapCi),
+    get(CI_TARGETS, 'Target', (r): CiTarget => ({ sales: users(r.fields?.['SC']), target: num(r.fields?.['Sales Target (RM)']) })),
+  ]);
+  return { generatedAt: Date.now(), rows: { cases, targets }, warnings };
+}

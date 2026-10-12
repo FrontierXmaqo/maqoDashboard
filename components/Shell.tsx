@@ -10,6 +10,8 @@ import { LayerView } from './Layer';
 export const PAGES: { href: string; label: string; ic: string; roles?: string[] }[] = [
   { href: '/', label: 'Overview', ic: 'dash' },
   { href: '/my-work', label: 'My work', ic: 'me' },
+  { href: '/residential', label: 'Residential sales', ic: 'rep', roles: ['ceo'] },
+  { href: '/ci', label: 'C&I sales', ic: 'rep', roles: ['ceo'] },
   { href: '/departments', label: 'Departments', ic: 'dept' },
   { href: '/employees', label: 'Employees', ic: 'people' },
   { href: '/tasks', label: 'Tasks', ic: 'tasks' },
