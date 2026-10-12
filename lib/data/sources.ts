@@ -86,6 +86,7 @@ export async function resolveSources(): Promise<Sources> {
   const { baseToken } = larkEnv();
   const tables = await cached('tables', READ_CACHE_SECONDS, () => twice(() => listTables(baseToken)));
   const fields = new Map<string, LarkField[] | null>();
-  await Promise.all(tables.map(async (t) => fields.set(t.table_id, await tableFields(t.table_id).catch(() => null))));
+  // One table at a time: reading every table's fields at once trips Lark's rate limit.
+  for (const t of tables) fields.set(t.table_id, await tableFields(t.table_id).catch(() => null));
   return pickSources(tables, (id) => fields.get(id) ?? null);
 }
