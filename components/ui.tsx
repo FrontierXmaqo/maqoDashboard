@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useData } from './DataProvider';
-import { NOT_SET, prioMeta, stageMeta, STATUS, type PersonX, type ProjectX, type TaskX, type Tone } from '../lib/model';
+import { NOT_SET, prioMeta, stageMeta, STATUS, taskInDept, type PersonX, type ProjectX, type TaskX, type Tone } from '../lib/model';
 import type { PersonRef, Stage, Task } from '../lib/types';
 
 const IC: Record<string, ReactNode> = {
@@ -179,6 +179,21 @@ export function DeptChips({ value, onChange, depts }: { value: string; onChange:
     </div>
   );
 }
+
+/** Department chips, then an employee picker limited to the chosen department. */
+export function DeptEmpFilter({ people, depts, dept, emp, onDept, onEmp }: { people: PersonX[]; depts: string[]; dept: string; emp: string; onDept: (d: string) => void; onEmp: (id: string) => void }) {
+  const inDept = people.filter((p) => dept === 'All' || p.deptLabel === dept).sort((a, b) => a.name.localeCompare(b.name));
+  return (
+    <div className="row" style={{ justifyContent: 'space-between' }}>
+      <DeptChips value={dept} depts={depts} onChange={(d) => { onDept(d); onEmp('all'); }} />
+      <Select id="emp-filter" label="Employee" value={emp} onChange={onEmp} options={[['all', dept === 'All' ? 'Everyone' : `Everyone in ${dept}`], ...inDept.map((p) => [p.openId, p.name] as [string, string])]} />
+    </div>
+  );
+}
+
+/** Tasks matching a DeptEmpFilter choice. */
+export const filterTasks = (list: TaskX[], dept: string, emp: string) =>
+  list.filter((t) => (dept === 'All' || taskInDept(t, dept)) && (emp === 'all' || t.assignees.some((a) => a.openId === emp)));
 
 export function Select({ id, label, value, options, onChange }: { id: string; label: string; value: string; options: [string, string][]; onChange: (v: string) => void }) {
   return (

@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useData } from '../DataProvider';
-import { Bar, Icon, Pill, Seg, Who } from '../ui';
+import { Bar, DeptEmpFilter, Icon, Pill, Seg, Who, filterTasks } from '../ui';
 import { dayToIso, fdy, klDay, monthRange, quarterRange, weekRange } from '../../lib/dates';
-import { STATUS, taskInDept, type Model, type TaskX } from '../../lib/model';
+import { STATUS, type Model, type TaskX } from '../../lib/model';
 
 type Period = 'week' | 'month' | 'last' | '30' | 'quarter';
 
@@ -46,6 +46,8 @@ function downloadCsv(name: string, rows: (string | number)[][]) {
 export default function Reports() {
   const { M, open, toast } = useData();
   const [period, setPeriod] = useState<Period>('month');
+  const [dept, setDept] = useState('All');
+  const [emp, setEmp] = useState('all');
   if (M.viewer.role === 'employee') {
     return (
       <div className="card" style={{ alignItems: 'flex-start', padding: 28 }}>
@@ -55,12 +57,12 @@ export default function Reports() {
     );
   }
   const [a, b] = bounds(M, period);
-  const all = stats(M.sTasks, a, b);
-  const depts = M.depts.map((d) => {
+  const all = stats(filterTasks(M.sTasks, dept, emp), a, b);
+  const depts = M.depts.filter((d) => dept === 'All' || d === dept).map((d) => {
     const ppl = M.sPeople.filter((p) => p.deptLabel === d);
-    return { name: d, people: ppl.length, free: ppl.filter((p) => p.key === 'free').length, ...stats(M.sTasks.filter((t) => taskInDept(t, d)), a, b) };
+    return { name: d, people: ppl.length, free: ppl.filter((p) => p.key === 'free').length, ...stats(filterTasks(M.sTasks, d, emp), a, b) };
   });
-  const people = M.sPeople.map((p) => ({ p, ...stats(p.mine, a, b) })).sort((x, y) => y.done - x.done || y.open - x.open || x.p.name.localeCompare(y.p.name));
+  const people = M.sPeople.filter((p) => (dept === 'All' || p.deptLabel === dept) && (emp === 'all' || p.openId === emp)).map((p) => ({ p, ...stats(p.mine, a, b) })).sort((x, y) => y.done - x.done || y.open - x.open || x.p.name.localeCompare(y.p.name));
   const maxDone = Math.max(1, ...people.map((x) => x.done));
   const pct = (r: number | null) => (r == null ? '—' : `${r}%`);
 
@@ -81,6 +83,7 @@ export default function Reports() {
           <button type="button" className="btn" onClick={exportCsv}><Icon n="dl" s={16} />Export CSV</button>
         </div>
       </div>
+      <DeptEmpFilter people={M.sPeople} depts={M.depts} dept={dept} emp={emp} onDept={setDept} onEmp={setEmp} />
       <section className="kpis k4">
         <div className="kpi big"><span>Completed in period</span><span className="v num">{all.done}</span><span className="muted">{all.dueIn} were due in this period</span></div>
         <div className="kpi"><span className="muted">On-time rate</span><span className="v num">{pct(all.rate)}</span><span className="muted">done by the deadline</span></div>
