@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useData } from '../DataProvider';
-import { Icon, TaskTable } from '../ui';
+import { DeptEmpFilter, Icon, TaskTable, filterTasks } from '../ui';
 import { dayToIso, fdy, isoToDay, MONL, plural } from '../../lib/dates';
 import { prioMeta, type TaskX } from '../../lib/model';
 
@@ -13,13 +13,16 @@ export default function Calendar() {
   const today = dayToIso(M.t0);
   const [month, setMonth] = useState(today.slice(0, 7));
   const [sel, setSel] = useState(today);
+  const [dept, setDept] = useState('All');
+  const [emp, setEmp] = useState('all');
+  const tasks = filterTasks(M.sTasks, dept, emp);
   const [y, m] = month.split('-').map(Number);
   const first = Math.round(Date.UTC(y, m - 1, 1) / 864e5);
   const last = Math.round(Date.UTC(y, m, 0) / 864e5);
   const start = first - ((new Date(first * 864e5).getUTCDay() + 6) % 7);
   const end = last + (6 - ((new Date(last * 864e5).getUTCDay() + 6) % 7));
   const byDay = new Map<number, TaskX[]>();
-  for (const t of M.sTasks) if (Number.isFinite(t.dueDay)) byDay.set(t.dueDay, [...(byDay.get(t.dueDay) ?? []), t]);
+  for (const t of tasks) if (Number.isFinite(t.dueDay)) byDay.set(t.dueDay, [...(byDay.get(t.dueDay) ?? []), t]);
   const shift = (n: number) => {
     const d = new Date(Date.UTC(y, m - 1 + n, 1));
     const ym = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
@@ -40,11 +43,11 @@ export default function Calendar() {
     );
   }
   const dayList = (byDay.get(isoToDay(sel)) ?? []).slice().sort((a, b) => prioMeta(a.priority).rank - prioMeta(b.priority).rank);
-  const noDue = M.sTasks.filter((t) => !t.done && !Number.isFinite(t.dueDay)).length;
+  const noDue = tasks.filter((t) => !t.done && !Number.isFinite(t.dueDay)).length;
   return (
     <>
       <div className="topbar">
-        <div><h1 className="title">Calendar</h1><p className="muted">Task deadlines (Estimate Deadline)</p></div>
+        <div><h1 className="title">Calendar</h1><p className="muted">Task deadlines across the company (Estimate Deadline)</p></div>
         <div className="row">
           <button type="button" className="icon-btn" onClick={() => shift(-1)} aria-label="Previous month"><Icon n="left" /></button>
           <b style={{ minWidth: 140, textAlign: 'center', fontSize: 15 }}>{MONL[m - 1]} {y}</b>
@@ -52,6 +55,7 @@ export default function Calendar() {
           <button type="button" className="btn" onClick={() => { setMonth(today.slice(0, 7)); setSel(today); }}>Today</button>
         </div>
       </div>
+      <DeptEmpFilter people={M.sPeople} depts={M.depts} dept={dept} emp={emp} onDept={setDept} onEmp={setEmp} />
       <div className="row" style={{ gap: 14 }}>
         <span className="row" style={{ gap: 6 }}><span className="dot d-b" />To do or ongoing</span>
         <span className="row" style={{ gap: 6 }}><span className="dot d-a" />Stalled</span>

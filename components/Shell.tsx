@@ -16,8 +16,6 @@ export const PAGES: { href: string; label: string; ic: string; roles?: string[] 
   { href: '/engineering', label: 'Engineering', ic: 'dept' },
   { href: '/departments', label: 'Departments', ic: 'dept' },
   { href: '/employees', label: 'Employees', ic: 'people' },
-  { href: '/tasks', label: 'Tasks', ic: 'tasks' },
-  { href: '/projects', label: 'Projects', ic: 'proj' },
   { href: '/calendar', label: 'Calendar', ic: 'cal' },
   { href: '/reports', label: 'Reports', ic: 'rep', roles: ['ceo', 'leader'] },
   { href: '/settings', label: 'Settings', ic: 'set' },
@@ -36,14 +34,12 @@ export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const router = useRouter();
   const [pending, start] = useTransition();
-  const overdue = M.sTasks.filter((t) => t.overdue).length;
 
   const nav = (mobile: boolean) =>
     PAGES.filter((p) => (!p.roles || p.roles.includes(role)) && (p.href !== '/my-work' || me.openId)).map((p) => (
       <Link key={p.href} href={p.href} className="nav" aria-current={path === p.href ? 'page' : undefined}>
         <Icon n={p.ic} />
         {p.label}
-        {!mobile && p.href === '/tasks' && overdue > 0 && <span className="tag t-r badge num">{overdue}</span>}
       </Link>
     ));
 
