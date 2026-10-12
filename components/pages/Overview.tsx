@@ -319,7 +319,7 @@ function EmployeesCard({ M, sales, limit, onShowAll }: { M: Model; sales: SalesS
   const projectsOf = (p: PersonX) => [...new Set(p.open.map((t) => t.projectNames).filter((n) => n !== 'No project'))];
   const shown = limit ? list.slice(0, limit) : list;
   const salesLine = (s: SalesSummary['people'][number]) =>
-    s.dept === 'Residential' ? `${plural(s.projects, 'project')}, ${kwp(s.kwp)} this year` : `${rmk(s.closedRm)} closed, ${rmk(s.hotRm)} hot leads`;
+    s.dept === 'Residential' ? `${plural(s.projects, 'project')}, ${kwp(s.kwp)} this year` : `${rmk(s.closedRm)} closed (${plural(s.projects, 'deal')}), ${rmk(s.hotRm)} hot leads`;
   return (
     <section className="card" id="team" aria-labelledby="h-emp">
       <div className="spread">
@@ -424,7 +424,7 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
         <Link className="kpi big" href="/ci" style={{ textDecoration: 'none' }}>
           <span className="muted">Sales achieved</span>
           <span className="v num">{rmk(salesRm)}</span>
-          <span className="muted">{resi?.rm != null ? `C&I ${rmk(ci?.closedRm ?? 0)} + Resi ${rmk(resi.rm)}` : 'C&I only. Resi price not in Lark yet'}</span>
+          <span className="muted">{resi?.rm != null ? `C&I ${rmk(ci?.closedRm ?? 0)} + Resi ${rmk(resi.rm)}` : `C&I only, ${plural(ci?.closedN ?? 0, 'closed deal')}. Resi price not in Lark yet`}</span>
         </Link>
         <Link className="kpi" href="/residential" style={{ textDecoration: 'none' }}>
           <span className="muted">kWp sold {year}</span><span className="v num">{kwp(soldKwp)}</span>
@@ -457,7 +457,7 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
           <div className="dcard off"><b>Residential sales</b><p className="muted">No projects came back from Lark.</p></div>
         )}
         {ci ? (
-          <DeptCard href="/ci" title="C&I sales" big={rmk(ci.closedRm)} bigL={`sales achieved, ${kwp(ci.closedKwp)}`}
+          <DeptCard href="/ci" title="C&I sales" big={rmk(ci.closedRm)} bigL={`sales achieved, ${plural(ci.closedN, 'deal')}, ${kwp(ci.closedKwp)}`}
             subs={[[ci.target ? `${Math.round((ci.closedRm / ci.target) * 100)}%` : '—', 'of target'], [rmk(ci.hotRm), 'hot leads']]} />
         ) : (
           <div className="dcard off"><b>C&amp;I sales</b><p className="muted">No cases came back from Lark.</p></div>

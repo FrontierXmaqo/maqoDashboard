@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mapResi, mapTarget } from '../lib/data/sales.ts';
+import { closedCounts, mapResi, mapTarget } from '../lib/data/sales.ts';
 import { resiByPerson, salesSummary } from '../lib/sales-model.ts';
 
 const amy = [{ id: 'ou_a', name: 'Amy' }];
@@ -34,7 +34,7 @@ test('overview summary uses the latest year, skips cancelled projects and C&I ro
   const t = (sc: unknown[], target: number, ach: number) => mapTarget({ record_id: String(Math.random()), fields: { SC: sc, 'Sales Target (RM)': target, 'Sales Achivement': { type: 2, value: [ach] }, 'Sales Pipeline (Hot Lead)': { type: 2, value: [40] } } });
   const s = salesSummary([r(2026, 5, 'COMPLETED'), r(2026, 9, 'CANCEL BY CLIENT'), r(2025, 7, null)], [t(amy, 1000, 100), t([], 5000, 999)], []);
   assert.deepEqual(s.resi, { year: 2026, kwp: 5, projects: 1, ongoing: 0, completed: 1, rm: null, target: { rm: null, kwp: null } });
-  assert.deepEqual(s.ci, { closedRm: 100, closedKwp: 0, target: 1000, hotRm: 40, pipelineRm: 0 });
+  assert.deepEqual(s.ci, { closedRm: 100, closedKwp: 0, closedN: 0, target: 1000, hotRm: 40, pipelineRm: 0 });
   assert.deepEqual(s.alerts.map((x) => x.href), ['/ci']);
   assert.equal(s.people.length, 1);
   assert.equal(s.people[0].dept, 'C&I');
@@ -47,4 +47,11 @@ test('residential selling price is summed per person when the column exists', ()
   assert.equal(row.rm, 40000);
   assert.equal(row.pricedKwp, 10); // RM/kWp only uses priced projects
   assert.equal(row.kwp, 15);
+});
+
+test('closed deals are counted per Sales PIC, whatever the status spacing', () => {
+  const c = (status: string, pic = amy) => ({ record_id: String(Math.random()), fields: { 'Client Status': status, 'Sales PIC': pic } });
+  const m = closedCounts([c('Closed Sales'), c('Closed Sales '), c('Hot Lead'), c('Closed Sales', ben)]);
+  assert.equal(m.get('ou_a'), 2);
+  assert.equal(m.get('ou_b'), 1);
 });
