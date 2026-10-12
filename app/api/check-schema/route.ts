@@ -31,13 +31,6 @@ async function salesBaseLines(): Promise<string[]> {
       lines.push('  Add the dashboard app to this Base (Base ⋯ menu > add app / collaborator) with read access.');
     }
   }
-  // shortcut: temporary look at the FLOW stage names, remove once mapped.
-  try {
-    const f = (await listFields('Ec88b000TaIsdGsEznLl8i2dgve', 'tblMhiNP4OO3h3oA')).filter((x) => ['FLOW', 'Stage No.', 'Progress'].includes(x.field_name));
-    lines.push('\n--- FLOW fields: ' + JSON.stringify(f).slice(0, 6000));
-  } catch (e) {
-    lines.push(`  flow check failed: ${e instanceof Error ? e.message : String(e)}`);
-  }
   return lines;
 }
 

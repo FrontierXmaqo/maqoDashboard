@@ -17,6 +17,9 @@ export const RESI_SALES_LARK_URL = `https://bsgyt70achks.sg.larksuite.com/base/$
 export const RESI_MONTHLY_TARGET = 1_000_000;
 const FY_START_MONTH = 8; // September, 0-based
 
+/** Residential FLOW stages in order; the 2026 table's Stage No. formula numbers them 1 to 11. */
+export const RESI_STAGES = ['Date Site Visit (Confirm Date)', 'Assign PIC', 'Submit Report', 'Review By Leader', 'Design & BQ', 'Approval Design & BQ', 'Update NEM/ATAP Status', 'Installation Date', 'Assign Supervisor', 'Complete Project', 'Done'];
+
 /** One signed residential case from the Sales Declaration table. */
 export type ResiSale = { id: string; sales: PersonRef[]; price: number; kwp: number | null; at: number | null };
 

@@ -3,7 +3,7 @@
 
 import { READ_CACHE_SECONDS } from '../../config/app.ts';
 import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
-import { CI_BASE, RESI_BASE, RESI_SALES_BASE, type CiTarget, type ResiProject, type ResiSale, type SalesData } from '../sales-model.ts';
+import { CI_BASE, RESI_BASE, RESI_SALES_BASE, RESI_STAGES, type CiTarget, type ResiProject, type ResiSale, type SalesData } from '../sales-model.ts';
 import { cached } from './cache.ts';
 import { datetime, display, num, single, users } from './parse.ts';
 import { fixturesEnabled } from './fixtures.ts';
@@ -38,7 +38,7 @@ export function mapResi(rec: LarkRecord, fixedYear: number | null): ResiProject 
     // The 2026 table rarely fills PROJECT STATUS; its Progress formula (1 = all stages done) does the job.
     status: single(pick(f, 'PROJECT STATUS', 'Status'))?.toUpperCase() ?? (progress == null ? null : progress >= 1 ? 'COMPLETED' : 'IN PROGRESS'),
     // The Flow field does not come back from the API, so the Stage No. formula stands in for it.
-    stage: display(pick(f, 'FLOW', 'Flow')) || (stageNo != null ? `Stage ${stageNo}` : ''),
+    stage: display(pick(f, 'FLOW', 'Flow')) || (stageNo ? RESI_STAGES[stageNo - 1] ?? `Stage ${stageNo}` : ''),
     year: fixedYear ?? yearOf(installedAt),
     createdAt: rec.created_time ?? null,
     installedAt,

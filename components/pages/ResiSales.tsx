@@ -1,10 +1,12 @@
 'use client';
 
 import { Avatar, Bar, Pill } from '../ui';
-import { RESI_LARK_URL, RESI_MONTHLY_TARGET, RESI_SALES_LARK_URL, resiByPerson, resiOpen, resiSalesStats, type ResiProject, type ResiSale, type SalesData } from '../../lib/sales-model';
+import { RESI_LARK_URL, RESI_MONTHLY_TARGET, RESI_SALES_LARK_URL, RESI_STAGES, resiByPerson, resiOpen, resiSalesStats, type ResiProject, type ResiSale, type SalesData } from '../../lib/sales-model';
 import { Kpi, LarkLink, SalesWarnings, kwp, rm, rmk } from './SalesBits';
 
 const STATUS_TONE: Record<string, 'g' | 'b' | 'a' | 'n' | 'r'> = { COMPLETED: 'g', 'IN PROGRESS': 'b', SCHEDULE: 'b', PENDING: 'a', KIV: 'a', 'NOT STARTED': 'n' };
+// Unknown stage names go last.
+const order = (s: string) => (RESI_STAGES.indexOf(s) + 1 || RESI_STAGES.length + 1) - 1;
 const pct = (a: number, b: number) => `${b ? Math.round((a / b) * 100) : 0}%`;
 
 export default function ResiSales({ data }: { data: SalesData<{ projects: ResiProject[]; sales: ResiSale[] }> }) {
@@ -128,8 +130,8 @@ export default function ResiSales({ data }: { data: SalesData<{ projects: ResiPr
             <>
               <h3 style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Where ongoing projects are</h3>
               <div className="stack" style={{ gap: 6 }}>
-                {[...stages.entries()].sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true })).map(([s, n]) => (
-                  <div key={s} className="spread"><span>{s}</span><b className="num">{n}</b></div>
+                {[...stages.entries()].sort((a, b) => order(a[0]) - order(b[0])).map(([s, n]) => (
+                  <div key={s} className="spread"><span>{order(s) < RESI_STAGES.length ? `${order(s) + 1}. ${s}` : s}</span><b className="num">{n}</b></div>
                 ))}
               </div>
             </>
