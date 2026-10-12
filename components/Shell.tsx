@@ -12,6 +12,7 @@ export const PAGES: { href: string; label: string; ic: string; roles?: string[] 
   { href: '/my-work', label: 'My work', ic: 'me' },
   { href: '/residential', label: 'Residential sales', ic: 'rep', roles: ['ceo'] },
   { href: '/ci', label: 'C&I sales', ic: 'rep', roles: ['ceo'] },
+  { href: '/marketing', label: 'Marketing', ic: 'rep' },
   { href: '/om', label: 'O&M', ic: 'dept' },
   { href: '/engineering', label: 'Engineering', ic: 'dept' },
   { href: '/departments', label: 'Departments', ic: 'dept' },

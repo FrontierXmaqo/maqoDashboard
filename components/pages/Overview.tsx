@@ -296,7 +296,7 @@ function DeptCard({ href, title, big, bigL, subs, flag }: { href: string; title:
   );
 }
 
-const NOT_CONNECTED = ['Marketing', 'Licensing', 'Procurement', 'Finance', 'HR'];
+const NOT_CONNECTED = ['Marketing (page ready, waiting for data)', 'Licensing', 'Procurement', 'Finance', 'HR'];
 
 type EmpRow = { id: string; p: PersonX | SalesSummary['people'][number]['p']; person?: PersonX; dept: string; sales?: SalesSummary['people'][number] };
 
