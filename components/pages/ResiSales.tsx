@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import { Avatar, Bar, Pill, Seg } from '../ui';
-import { RESI_LARK_URL, resiByPerson, resiOpen, type ResiProject, type SalesData } from '../../lib/sales-model';
-import { klDay, monthRange } from '../../lib/dates';
-import { Kpi, LarkLink, SalesWarnings, kwp } from './SalesBits';
+import { RESI_LARK_URL, RESI_TARGET, resiByPerson, resiOpen, type ResiProject, type SalesData } from '../../lib/sales-model';
+import { Kpi, LarkLink, SalesWarnings, kwp, rm, rmk } from './SalesBits';
 
 const STATUS_TONE: Record<string, 'g' | 'b' | 'a' | 'n' | 'r'> = { COMPLETED: 'g', 'IN PROGRESS': 'b', SCHEDULE: 'b', PENDING: 'a', KIV: 'a', 'NOT STARTED': 'n' };
 
@@ -15,13 +14,14 @@ export default function ResiSales({ data }: { data: SalesData<ResiProject[]> }) 
   const live = list.filter((r) => !(r.status ?? '').startsWith('CANCEL'));
   const rows = resiByPerson(list);
   const maxKwp = Math.max(1, ...rows.map((r) => r.kwp));
-  const [m0, m1] = monthRange(klDay(data.generatedAt));
-  const newThisMonth = list.filter((r) => {
-    const d = klDay(r.createdAt);
-    return Number.isFinite(d) && d >= m0 && d <= m1;
-  }).length;
-  const hasCreated = list.some((r) => r.createdAt != null);
   const noKwp = live.filter((r) => r.kwp == null).length;
+  const totKwp = live.reduce((s, r) => s + (r.kwp ?? 0), 0);
+  const priced = live.filter((r) => r.price != null);
+  const totRm = priced.reduce((s, r) => s + (r.price ?? 0), 0);
+  const pricedKwp = priced.reduce((s, r) => s + (r.kwp ?? 0), 0);
+  const tgt = String(RESI_TARGET.year) === year ? RESI_TARGET : null;
+  // Prefer an RM target once prices exist; otherwise compare kWp.
+  const vsTarget = tgt?.rm && priced.length ? { pct: (totRm / tgt.rm) * 100, of: rmk(tgt.rm) } : tgt?.kwp ? { pct: (totKwp / tgt.kwp) * 100, of: kwp(tgt.kwp) } : null;
 
   const statuses = new Map<string, number>();
   for (const r of list) statuses.set(r.status ?? 'NOT SET', (statuses.get(r.status ?? 'NOT SET') ?? 0) + 1);
@@ -42,7 +42,7 @@ export default function ResiSales({ data }: { data: SalesData<ResiProject[]> }) 
       <div className="topbar">
         <div>
           <h1 className="title">Residential sales</h1>
-          <p className="muted">Live from the PROJECT RESIDENTIAL tables in Lark. Selling price is not in Lark yet, so this page shows projects and kWp.</p>
+          <p className="muted">Live from the PROJECT RESIDENTIAL tables in Lark. Selling price shows once a SELLING PRICE (RM) column is filled in Lark.</p>
         </div>
         <div className="row">
           {years.length > 1 && <Seg label="Year" value={year} options={years.map((y) => [String(y), String(y)] as [string, string])} onChange={setYear} />}
@@ -60,10 +60,10 @@ export default function ResiSales({ data }: { data: SalesData<ResiProject[]> }) 
       ) : (
         <>
           <div className="kpis k4">
-            <Kpi big v={kwp(live.reduce((s, r) => s + (r.kwp ?? 0), 0))} l={`${year} kWp (${live.length} projects)`} />
-            <Kpi v={list.filter(resiOpen).length} l="Ongoing projects" />
-            <Kpi v={list.filter((r) => r.status === 'COMPLETED').length} l="Completed" />
-            {hasCreated ? <Kpi v={newThisMonth} l="New projects this month" /> : <Kpi v={list.length - live.length} l="Cancelled by client" />}
+            <Kpi big v={priced.length ? rmk(totRm) : '—'} l={priced.length ? `${year} selling price (${priced.length} of ${live.length} priced)` : `${year} selling price: not in Lark yet`} />
+            <Kpi v={kwp(totKwp)} l={`${live.length} projects, ${list.filter(resiOpen).length} ongoing`} />
+            <Kpi v={pricedKwp ? rm(totRm / pricedKwp) : '—'} l="Avg RM/kWp" />
+            <Kpi v={vsTarget ? `${Math.round(vsTarget.pct)}%` : '—'} l={vsTarget ? `Of ${year} team target (${vsTarget.of})` : `No ${year} team target set`} />
           </div>
 
           <section className="card" aria-labelledby="h-sp">
@@ -74,7 +74,7 @@ export default function ResiSales({ data }: { data: SalesData<ResiProject[]> }) 
             <div className="tbl">
               <table>
                 <thead>
-                  <tr><th>Salesperson</th><th>Projects</th><th style={{ minWidth: 200 }}>kWp</th><th>Ongoing</th><th>Completed</th><th>Cancelled</th></tr>
+                  <tr><th>Salesperson</th><th>Projects</th><th style={{ minWidth: 200 }}>kWp</th><th>Selling price</th><th>RM/kWp</th><th>Ongoing</th><th>Completed</th><th>Cancelled</th></tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => (
@@ -82,6 +82,8 @@ export default function ResiSales({ data }: { data: SalesData<ResiProject[]> }) 
                       <td><span className="who"><Avatar p={r.p} sm /><b>{r.p.name}</b></span></td>
                       <td className="num">{r.projects}</td>
                       <td><span className="barrow"><Bar pct={(r.kwp / maxKwp) * 100} tone="g" thick /><span className="num">{r.kwp.toFixed(1)}</span></span></td>
+                      <td className="num">{r.rm ? rmk(r.rm) : '—'}</td>
+                      <td className="num">{r.pricedKwp ? rm(r.rm / r.pricedKwp) : '—'}</td>
                       <td className="num">{r.ongoing}</td>
                       <td className="num">{r.completed}</td>
                       <td className="num">{r.cancelled || '—'}</td>

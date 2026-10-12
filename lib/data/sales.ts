@@ -35,6 +35,8 @@ export function mapResi(rec: LarkRecord, fixedYear: number | null): ResiProject 
     client: display(pick(f, 'APPLICATION NAME', 'Application Name')),
     sales: users(pick(f, 'SALES PIC', 'Sales Pic')),
     kwp: num(pick(f, 'SYSTEM SIZE(KWP)', 'System Size (kWp)')),
+    // No price column exists yet; these are the names the team is likely to give it.
+    price: num(pick(f, 'SELLING PRICE (RM)', 'Selling Price (RM)', 'SELLING PRICE', 'Selling Price', 'PRICE (RM)', 'TOTAL PRICE (RM)')),
     // The 2026 table rarely fills PROJECT STATUS; its Progress formula (1 = all stages done) does the job.
     status: single(pick(f, 'PROJECT STATUS', 'Status'))?.toUpperCase() ?? (progress == null ? null : progress >= 1 ? 'COMPLETED' : 'IN PROGRESS'),
     // The Flow field does not come back from the API, so the Stage No. formula stands in for it.
