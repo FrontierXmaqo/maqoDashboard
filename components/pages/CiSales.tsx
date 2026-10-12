@@ -33,8 +33,9 @@ export default function CiSales({ data }: { data: SalesData<CiTarget[]> }) {
         </div>
       ) : (
         <>
-          <div className="kpis k4">
+          <div className="kpis k5">
             <Kpi big v={rmk(achieved)} l="Sales achieved" />
+            <Kpi v={sum((t) => t.closedN)} l="Closed sales (deals)" />
             <Kpi v={pct(achieved, target)} l={`Of target (${rmk(target)})`} />
             <Kpi v={rmk(sum((t) => t.hotRm))} l="Hot lead pipeline" />
             <Kpi v={closedKwp ? rm(achieved / closedKwp) : '—'} l={`Avg RM/kWp, ${kwp(closedKwp)} closed`} />
@@ -48,12 +49,13 @@ export default function CiSales({ data }: { data: SalesData<CiTarget[]> }) {
             <div className="tbl">
               <table>
                 <thead>
-                  <tr><th>Sales consultant</th><th style={{ minWidth: 220 }}>Sales achieved (RM)</th><th>Closed kWp</th><th>RM/kWp</th><th>Hot lead pipeline</th><th>Pipeline (not closed)</th><th>Pipeline kWp</th></tr>
+                  <tr><th>Sales consultant</th><th>Closed deals</th><th style={{ minWidth: 220 }}>Sales achieved (RM)</th><th>Closed kWp</th><th>RM/kWp</th><th>Hot lead pipeline</th><th>Pipeline (not closed)</th><th>Pipeline kWp</th></tr>
                 </thead>
                 <tbody>
                   {rows.map((t) => (
                     <tr key={t.sales[0].openId}>
                       <td><span className="who"><Avatar p={t.sales[0]} sm /><b>{t.sales[0].name}</b></span></td>
+                      <td className="num">{t.closedN || '—'}</td>
                       <td>
                         <span className="barrow">
                           <Bar pct={(t.achievement / maxRm) * 100} tone={t.target && t.achievement >= t.target ? 'g' : 'b'} thick mark={t.target ? (t.target / maxRm) * 100 : undefined} />

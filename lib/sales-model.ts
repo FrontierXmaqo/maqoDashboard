@@ -48,6 +48,8 @@ export type CiTarget = {
   /** Pipeline (exclude Close Case), RM. */
   pipelineRm: number;
   pipelineKwp: number;
+  /** Number of Closed Sales cases in SE 2026, the table the Target lookups read. */
+  closedN: number;
 };
 
 export type SalesData<T> = { generatedAt: number; rows: T; warnings: string[] };
@@ -85,7 +87,7 @@ export const resiOpen = (r: ResiProject) => OPEN_RESI(r.status);
 /** The few numbers the CEO overview cards need, so the full rows stay off that page. */
 export type SalesSummary = {
   resi: { year: number; kwp: number; projects: number; ongoing: number; completed: number; rm: number | null; target: { rm: number | null; kwp: number | null } } | null;
-  ci: { closedRm: number; closedKwp: number; target: number; hotRm: number; pipelineRm: number } | null;
+  ci: { closedRm: number; closedKwp: number; closedN: number; target: number; hotRm: number; pipelineRm: number } | null;
   /** Salespeople with their latest-year numbers, so the CEO sees them even when the org chart can't. */
   people: { p: PersonRef; dept: 'Residential' | 'C&I'; projects: number; kwp: number; closedRm: number; hotRm: number }[];
   /** ms when read, for pace marks. */
@@ -122,9 +124,9 @@ export function salesSummary(resi: ResiProject[], targets: CiTarget[], warnings:
       : null,
     people: [
       ...resiByPerson(resi.filter((r) => r.year === ry)).filter((r) => r.p.openId).map((r) => ({ p: r.p, dept: 'Residential' as const, projects: r.projects, kwp: r.kwp, closedRm: r.rm, hotRm: 0 })),
-      ...ci.map((t) => ({ p: t.sales[0], dept: 'C&I' as const, projects: 0, kwp: t.closedKwp, closedRm: t.achievement, hotRm: t.hotRm })),
+      ...ci.map((t) => ({ p: t.sales[0], dept: 'C&I' as const, projects: t.closedN, kwp: t.closedKwp, closedRm: t.achievement, hotRm: t.hotRm })),
     ],
-    ci: ci.length ? { closedRm, closedKwp: sum((t) => t.closedKwp), target, hotRm: sum((t) => t.hotRm), pipelineRm: sum((t) => t.pipelineRm) } : null,
+    ci: ci.length ? { closedRm, closedKwp: sum((t) => t.closedKwp), closedN: sum((t) => t.closedN), target, hotRm: sum((t) => t.hotRm), pipelineRm: sum((t) => t.pipelineRm) } : null,
     warnings,
   };
 }

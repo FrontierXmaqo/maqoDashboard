@@ -10,6 +10,7 @@ import { fixturesEnabled } from './fixtures.ts';
 
 const RESI_2026 = 'tblMhiNP4OO3h3oA';
 const CI_TARGETS = 'tbliUv5oMV1AVWCS';
+const CI_SE = 'tblpBSsofNilaC3G'; // SE 2026
 
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const yearOf = (ms: number | null) => (ms == null ? null : new Date(ms + 8 * 3600_000).getUTCFullYear());
@@ -55,6 +56,7 @@ export function mapTarget(rec: LarkRecord): CiTarget {
     hotRm: num(f['Sales Pipeline (Hot Lead)']) ?? 0,
     pipelineRm: num(f['Pipeline (exclude Close Case)']) ?? 0,
     pipelineKwp: num(f['Pipeline (kWp)']) ?? 0,
+    closedN: 0,
   };
 }
 
@@ -67,11 +69,25 @@ export async function loadResi(): Promise<SalesData<ResiProject[]>> {
   }
 }
 
+/** Closed Sales cases per Sales PIC open_id. SE 2026 is the table the Target lookups sum, so counts match. */
+export function closedCounts(recs: LarkRecord[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const r of recs) {
+    const f = r.fields ?? {};
+    if (!(single(f['Client Status']) ?? '').trim().toLowerCase().startsWith('closed')) continue;
+    const id = users(f['Sales PIC'])[0]?.openId;
+    if (id) m.set(id, (m.get(id) ?? 0) + 1);
+  }
+  return m;
+}
+
 export async function loadCi(): Promise<SalesData<CiTarget[]>> {
   // The Target table holds the C&I team's own per-person totals, so the dashboard shows the same numbers.
-  try {
-    return { generatedAt: Date.now(), rows: (await read(CI_BASE, CI_TARGETS)).map(mapTarget), warnings: [] };
-  } catch (e) {
-    return { generatedAt: Date.now(), rows: [], warnings: [`Could not read the C&I "Target" table: ${describe(e)}`] };
-  }
+  const warnings: string[] = [];
+  const [targets, cases] = await Promise.all([
+    read(CI_BASE, CI_TARGETS).catch((e) => (warnings.push(`Could not read the C&I "Target" table: ${describe(e)}`), [])),
+    read(CI_BASE, CI_SE).catch((e) => (warnings.push(`Could not count closed deals from "SE 2026": ${describe(e)}`), [])),
+  ]);
+  const closed = closedCounts(cases);
+  return { generatedAt: Date.now(), rows: targets.map(mapTarget).map((t) => ({ ...t, closedN: closed.get(t.sales[0]?.openId ?? '') ?? 0 })), warnings };
 }
