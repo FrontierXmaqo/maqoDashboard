@@ -48,4 +48,5 @@ test('overview summary uses the latest year and skips cancelled projects', () =>
   assert.deepEqual(s.resi, { year: 2026, kwp: 5, projects: 1, ongoing: 0, completed: 1 });
   assert.deepEqual(s.ci, { year: 2026, closedRm: 100, closedN: 1, target: 1000, hotRm: 40, hotN: 1 });
   assert.deepEqual(s.people, []); // no Sales PIC on these rows, so no one to list
+  assert.deepEqual(s.alerts.map((x) => x.text), ['C&I closed RM 0k of RM 0.0M target (10%)']);
 });

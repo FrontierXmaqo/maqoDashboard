@@ -106,6 +106,8 @@ export type SalesSummary = {
   ci: { year: number; closedRm: number; closedN: number; target: number; hotRm: number; hotN: number } | null;
   /** Salespeople with their latest-year numbers, so the CEO sees them even when the org chart can't. */
   people: { p: PersonRef; dept: 'Residential' | 'C&I'; projects: number; kwp: number; closedRm: number; hotRm: number }[];
+  /** Data gaps and target misses the CEO should see under Needs attention. */
+  alerts: { text: string; href: string }[];
   warnings: string[];
 };
 
@@ -119,13 +121,24 @@ export function salesSummary(resi: ResiProject[], cases: CiCase[], targets: CiTa
   const tot = (l: CiCase[]) => l.reduce((s, c) => s + (c.total ?? 0), 0);
   const closed = cl.filter((c) => c.status === 'closed');
   const hot = cl.filter((c) => c.status === 'hot');
+  const alerts: SalesSummary['alerts'] = [];
+  const target = targets.reduce((s, t) => s + (t.sales[0] ? t.target ?? 0 : 0), 0);
+  if (cy && target) alerts.push({ text: `C&I closed RM ${Math.round(tot(closed) / 1e3)}k of RM ${(target / 1e6).toFixed(1)}M target (${Math.round((tot(closed) / target) * 100)}%)`, href: '/ci' });
+  const noStatus = cl.filter((c) => c.status === 'other').length;
+  if (noStatus) alerts.push({ text: `${noStatus} C&I cases in ${cy} have no client status`, href: '/ci' });
+  if (ry) {
+    const prev = resi.filter((r) => r.year === ry - 1);
+    const noKwp = prev.filter((r) => r.kwp == null).length;
+    if (noKwp) alerts.push({ text: `${noKwp} of ${prev.length} Residential projects in ${ry - 1} have no system size in Lark`, href: '/residential' });
+  }
   return {
+    alerts,
     resi: ry ? { year: ry, kwp: rl.reduce((s, r) => s + (r.kwp ?? 0), 0), projects: rl.length, ongoing: rl.filter(resiOpen).length, completed: rl.filter((r) => r.status === 'COMPLETED').length } : null,
     people: [
       ...resiByPerson(resi.filter((r) => r.year === ry)).filter((r) => r.p.openId).map((r) => ({ p: r.p, dept: 'Residential' as const, projects: r.projects, kwp: r.kwp, closedRm: 0, hotRm: 0 })),
       ...ciByPerson(cl, []).filter((r) => r.p.openId).map((r) => ({ p: r.p, dept: 'C&I' as const, projects: r.closedN, kwp: r.closedKwp, closedRm: r.closedRm, hotRm: r.hotRm })),
     ],
-    ci: cy ? { year: cy, closedRm: tot(closed), closedN: closed.length, target: targets.reduce((s, t) => s + (t.sales[0] ? t.target ?? 0 : 0), 0), hotRm: tot(hot), hotN: hot.length } : null,
+    ci: cy ? { year: cy, closedRm: tot(closed), closedN: closed.length, target, hotRm: tot(hot), hotN: hot.length } : null,
     warnings,
   };
 }

@@ -29,17 +29,25 @@ function attention(M: Model): Att[] {
   return out.sort((a, b) => b.sev - a.sev);
 }
 
-function AttentionCard({ M }: { M: Model }) {
+function AttentionCard({ M, extra = [] }: { M: Model; extra?: SalesSummary['alerts'] }) {
   const { open } = useData();
+  const router = useRouter();
   const att = useMemo(() => attention(M), [M]);
   return (
     <section className="card" aria-labelledby="h-att">
       <div className="spread">
         <h2 id="h-att">Needs attention</h2>
-        <span className={`num ${att.length ? 'c-r' : 'muted'}`}>{plural(att.length, 'item')}</span>
+        <span className={`num ${att.length ? 'c-r' : 'muted'}`}>{plural(att.length + extra.length, 'item')}</span>
       </div>
       <div className="stack" style={{ gap: 2, maxHeight: 360, overflowY: 'auto' }}>
-        {att.length ? (
+        {extra.map((x) => (
+          <button key={x.text} type="button" className="list-btn" onClick={() => router.push(x.href)}>
+            <span className="dot d-a" style={{ marginTop: 5 }} />
+            <span style={{ flexGrow: 1, minWidth: 0, fontWeight: 500 }}>{x.text}</span>
+            <span className="tag t-a">Sales</span>
+          </button>
+        ))}
+        {att.length || extra.length ? (
           att.map((a, i) => (
             <button key={i} type="button" className="list-btn" onClick={() => open(a.ref[0], a.ref[1])}>
               <span className={`dot d-${a.tone}`} style={{ marginTop: 5 }} />
@@ -366,7 +374,7 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
     const od = open.filter((t) => t.overdue).length;
     const ppl = M.sPeople.filter((p) => personInDept(p, d));
     return (
-      <DeptCard key={d} href={`/tasks?dept=${encodeURIComponent(d)}`} title={d} big={open.length} bigL="open tasks"
+      <DeptCard key={d} href={d === 'O&M' ? '/om' : '/engineering'} title={d} big={open.length} bigL="open tasks"
         subs={[[od, 'overdue'], [`${ppl.filter((p) => p.key === 'free').length} of ${ppl.length}`, 'people free']]}
         flag={od ? <Pill tone="r">Overdue</Pill> : undefined} />
     );
@@ -397,7 +405,7 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
         {taskCard('Engineering')}
         {NOT_CONNECTED.map((d) => <div key={d} className="dcard off"><b>{d}</b><p className="muted">Not connected to Lark yet.</p></div>)}
       </div>
-      <AttentionCard M={M} />
+      <AttentionCard M={M} extra={sales.alerts} />
       <EmployeesCard M={M} sales={sales} />
     </>
   );
