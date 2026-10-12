@@ -4,7 +4,7 @@
 //     -> { code, msg, tenant_access_token, expire (seconds, max 2h) }
 
 import { LARK_API_BASE } from '../../config/app.ts';
-import { larkEnv } from './env.ts';
+import { larkApp } from './env.ts';
 
 /** Refresh this long before the token's stated expiry. */
 const REFRESH_MARGIN_MS = 5 * 60 * 1000;
@@ -32,7 +32,7 @@ export function apiBase(): string {
 }
 
 async function fetchTenantToken(): Promise<CachedToken> {
-  const { appId, appSecret } = larkEnv();
+  const { appId, appSecret } = larkApp();
   const path = '/auth/v3/tenant_access_token/internal';
   const res = await fetch(apiBase() + path, {
     method: 'POST',

@@ -218,3 +218,10 @@ a.nav{text-decoration:none}
 /* The prototype's `.who span{display:block}` also hit avatars; keep them centred circles. */
 .who .av{display:grid}
 .who .av .dot{display:inline-block}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.dcard{text-align:left;text-decoration:none;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;color:var(--text);box-shadow:var(--shadow);transition:border-color 150ms}
+a.dcard:hover{border-color:var(--muted)}
+.dcard .big{font-size:28px;font-weight:700;line-height:1.05}
+.dcard .sub{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;border-top:1px solid var(--line2);padding-top:10px}
+.dcard .sub b{display:block;font-size:15px;font-weight:600}
+.dcard.off{background:var(--surface2);box-shadow:none}

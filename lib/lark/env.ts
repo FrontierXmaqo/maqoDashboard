@@ -19,6 +19,15 @@ export class LarkConfigError extends Error {
   }
 }
 
+/** App credentials only. Enough to read any Base the app is added to. */
+export function larkApp(): Omit<LarkEnv, 'baseToken'> {
+  const appId = process.env.LARK_APP_ID?.trim() ?? '';
+  const appSecret = process.env.LARK_APP_SECRET?.trim() ?? '';
+  const missing = [!appId && 'LARK_APP_ID', !appSecret && 'LARK_APP_SECRET'].filter((v): v is string => Boolean(v));
+  if (missing.length) throw new LarkConfigError(missing);
+  return { appId, appSecret };
+}
+
 export function larkEnv(): LarkEnv {
   const appId = process.env.LARK_APP_ID?.trim() ?? '';
   const appSecret = process.env.LARK_APP_SECRET?.trim() ?? '';
