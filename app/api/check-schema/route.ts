@@ -4,7 +4,6 @@
 import { runSchemaCheck } from '../../../lib/schema/run.ts';
 import { listFields, listTables } from '../../../lib/lark/bitable.ts';
 import { fieldTypeName } from '../../../config/schema.ts';
-import { searchAllRecords } from '../../../lib/lark/records.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,22 +30,6 @@ async function salesBaseLines(): Promise<string[]> {
       lines.push(`  ✗ Cannot read: ${e instanceof Error ? e.message : String(e)}`);
       lines.push('  Add the dashboard app to this Base (Base ⋯ menu > add app / collaborator) with read access.');
     }
-  }
-  // shortcut: temporary value-shape sample for mapping the sales pages, remove once mapped.
-  try {
-    for (const [t, names] of [
-      ['tblMhiNP4OO3h3oA', ['FLOW', 'Stage No.', 'Progress', 'PROJECT STATUS', 'SYSTEM SIZE(KWP)']],
-      ['tbl2BNmHHAo0fJlC', ['Flow', 'Status', 'System Size (kWp)', 'Executed Date Installation', 'work progress']],
-    ] as const) {
-      const recs = await searchAllRecords(SALES_BASES[0].token, t);
-      lines.push(`\n--- value samples ${t} (${recs.length} rows)`);
-      for (const n of names) {
-        const vals = recs.map((r) => r.fields?.[n]);
-        lines.push(`  ${n}: ${vals.filter((v) => v != null).length} filled; e.g. ${JSON.stringify(vals.filter((v) => v != null).slice(0, 3)).slice(0, 400)}`);
-      }
-    }
-  } catch (e) {
-    lines.push(`  samples failed: ${e instanceof Error ? e.message : String(e)}`);
   }
   return lines;
 }

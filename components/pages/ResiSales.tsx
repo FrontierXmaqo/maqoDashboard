@@ -6,7 +6,7 @@ import { RESI_LARK_URL, resiByPerson, resiOpen, type ResiProject, type SalesData
 import { klDay, monthRange } from '../../lib/dates';
 import { Kpi, LarkLink, SalesWarnings, kwp } from './SalesBits';
 
-const STATUS_TONE: Record<string, 'g' | 'b' | 'a' | 'n' | 'r'> = { COMPLETED: 'g', SCHEDULE: 'b', PENDING: 'a', KIV: 'a', 'NOT STARTED': 'n' };
+const STATUS_TONE: Record<string, 'g' | 'b' | 'a' | 'n' | 'r'> = { COMPLETED: 'g', 'IN PROGRESS': 'b', SCHEDULE: 'b', PENDING: 'a', KIV: 'a', 'NOT STARTED': 'n' };
 
 export default function ResiSales({ data }: { data: SalesData<ResiProject[]> }) {
   const years = [...new Set(data.rows.map((r) => r.year).filter((y): y is number => y != null))].sort((a, b) => b - a);
@@ -21,6 +21,7 @@ export default function ResiSales({ data }: { data: SalesData<ResiProject[]> }) 
     return Number.isFinite(d) && d >= m0 && d <= m1;
   }).length;
   const hasCreated = list.some((r) => r.createdAt != null);
+  const noKwp = live.filter((r) => r.kwp == null).length;
 
   const statuses = new Map<string, number>();
   for (const r of list) statuses.set(r.status ?? 'NOT SET', (statuses.get(r.status ?? 'NOT SET') ?? 0) + 1);
@@ -68,7 +69,7 @@ export default function ResiSales({ data }: { data: SalesData<ResiProject[]> }) 
           <section className="card" aria-labelledby="h-sp">
             <div className="spread">
               <h2 id="h-sp">Salesperson performance, {year}</h2>
-              <span className="muted">Cancelled projects are left out of kWp</span>
+              <span className="muted">Cancelled projects are left out of kWp{noKwp ? `. ${noKwp} project${noKwp === 1 ? ' has' : 's have'} no system size in Lark` : ''}</span>
             </div>
             <div className="tbl">
               <table>
@@ -103,7 +104,7 @@ export default function ResiSales({ data }: { data: SalesData<ResiProject[]> }) 
                   </div>
                 ))}
               </div>
-              <p className="muted">2026 counts every project in the 2026 table. Earlier years count projects by installation date; projects with no installation date are not in any year.</p>
+              <p className="muted">2026 counts every project in the 2026 table. Earlier years count projects by installation date; projects with no installation date are not in any year. Many older projects have no system size in Lark, so their kWp is understated.</p>
             </section>
             <section className="card" aria-labelledby="h-st">
               <h2 id="h-st">Project status, {year}</h2>
@@ -114,9 +115,9 @@ export default function ResiSales({ data }: { data: SalesData<ResiProject[]> }) 
               </div>
               {stages.size > 0 && (
                 <>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Where ongoing projects are (Flow)</h3>
+                  <h3 style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Where ongoing projects are</h3>
                   <div className="stack" style={{ gap: 6 }}>
-                    {[...stages.entries()].sort((a, b) => b[1] - a[1]).map(([s, n]) => (
+                    {[...stages.entries()].sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true })).map(([s, n]) => (
                       <div key={s} className="spread"><span>{s}</span><b className="num">{n}</b></div>
                     ))}
                   </div>

@@ -94,5 +94,8 @@ export function ciByPerson(cases: CiCase[], targets: CiTarget[]): CiPersonRow[] 
     else if (c.status === 'lost') r.lostN++;
   }
   for (const t of targets) if (t.sales[0] && t.target != null) row(t.sales[0]).target = (row(t.sales[0]).target ?? 0) + t.target;
-  return [...m.values()].sort((a, b) => b.closedRm - a.closedRm || b.hotRm - a.hotRm);
+  // People with only status-less cases and no target add nothing to the table.
+  return [...m.values()]
+    .filter((r) => r.closedN || r.hotRm || r.warmRm || r.coldRm || r.lostN || r.target)
+    .sort((a, b) => b.closedRm - a.closedRm || b.hotRm - a.hotRm);
 }

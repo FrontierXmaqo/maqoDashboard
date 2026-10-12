@@ -27,14 +27,18 @@ const pick = (f: Record<string, unknown>, ...names: string[]) => names.map((n) =
 export function mapResi(rec: LarkRecord, fixedYear: number | null): ResiProject {
   const f = rec.fields ?? {};
   const installedAt = datetime(pick(f, 'EXECUTED DATE INSTALLATION ( DAY 1)', 'Executed Date Installation'));
+  const progress = num(f['Progress']);
+  const stageNo = num(f['Stage No.']);
   return {
     id: rec.record_id,
     code: display(pick(f, 'PROJECT CODE', 'Project Code')),
     client: display(pick(f, 'APPLICATION NAME', 'Application Name')),
     sales: users(pick(f, 'SALES PIC', 'Sales Pic')),
     kwp: num(pick(f, 'SYSTEM SIZE(KWP)', 'System Size (kWp)')),
-    status: single(pick(f, 'PROJECT STATUS', 'Status'))?.toUpperCase() ?? null,
-    stage: display(pick(f, 'FLOW', 'Flow')),
+    // The 2026 table rarely fills PROJECT STATUS; its Progress formula (1 = all stages done) does the job.
+    status: single(pick(f, 'PROJECT STATUS', 'Status'))?.toUpperCase() ?? (progress == null ? null : progress >= 1 ? 'COMPLETED' : 'IN PROGRESS'),
+    // The Flow field does not come back from the API, so the Stage No. formula stands in for it.
+    stage: display(pick(f, 'FLOW', 'Flow')) || (stageNo != null ? `Stage ${stageNo}` : ''),
     year: fixedYear ?? yearOf(installedAt),
     createdAt: rec.created_time ?? null,
     installedAt,
