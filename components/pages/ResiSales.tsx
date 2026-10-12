@@ -1,7 +1,7 @@
 'use client';
 
 import { Avatar, Bar, Pill } from '../ui';
-import { RESI_LARK_URL, RESI_MONTHLY_TARGET, RESI_SALES_LARK_URL, RESI_STAGES, resiByPerson, resiOpen, resiSalesStats, type ResiProject, type ResiSale, type SalesData } from '../../lib/sales-model';
+import { RESI_DASHBOARD_URL, RESI_LARK_URL, RESI_MONTHLY_TARGET, RESI_SALES_LARK_URL, RESI_STAGES, resiByPerson, resiOpen, resiSalesStats, type ResiProject, type ResiSale, type SalesData } from '../../lib/sales-model';
 import { Kpi, LarkLink, SalesWarnings, kwp, rm, rmk } from './SalesBits';
 
 const STATUS_TONE: Record<string, 'g' | 'b' | 'a' | 'n' | 'r'> = { COMPLETED: 'g', 'IN PROGRESS': 'b', SCHEDULE: 'b', PENDING: 'a', KIV: 'a', 'NOT STARTED': 'n' };
@@ -120,7 +120,10 @@ export default function ResiSales({ data }: { data: SalesData<{ projects: ResiPr
           </div>
         </section>
         <section className="card" aria-labelledby="h-st">
-          <h2 id="h-st">Project status, 2026</h2>
+          <div className="spread">
+            <h2 id="h-st">Project status, 2026</h2>
+            <LarkLink href={RESI_DASHBOARD_URL}>Lark dashboard</LarkLink>
+          </div>
           <div className="stack" style={{ gap: 6 }}>
             {[...statuses.entries()].sort((a, b) => b[1] - a[1]).map(([s, n]) => (
               <div key={s} className="spread"><Pill tone={s.startsWith('CANCEL') ? 'r' : STATUS_TONE[s] ?? 'n'}>{s}</Pill><b className="num">{n}</b></div>

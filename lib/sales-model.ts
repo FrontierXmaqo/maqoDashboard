@@ -7,6 +7,7 @@ export const CI_BASE = 'YLOSbdnx6a53O9sVwCflo8adgad';
 export const RESI_LARK_URL = `https://bsgyt70achks.sg.larksuite.com/base/${RESI_BASE}?table=tblMhiNP4OO3h3oA&view=vewuXiMDmU`;
 export const CI_LARK_URL = `https://bsgyt70achks.sg.larksuite.com/base/${CI_BASE}?table=tbliUv5oMV1AVWCS&view=vewh2hE6ug`;
 
+export const RESI_DASHBOARD_URL = `https://bsgyt70achks.sg.larksuite.com/base/${RESI_BASE}?table=blk3AnnvgKEkruI9`;
 export const RESI_SALES_BASE = 'Hp9sbVJg8aHPIZs4U2FlpCMMgpd';
 export const RESI_SALES_LARK_URL = `https://bsgyt70achks.sg.larksuite.com/base/${RESI_SALES_BASE}?table=tblDTh0lmtTgrwH1`;
 
