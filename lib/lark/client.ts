@@ -80,6 +80,10 @@ type LarkEnvelope<T> = { code?: number; msg?: string; data?: T };
 /** Codes Lark returns for an invalid or expired access token. */
 const TOKEN_ERROR_CODES = new Set([99991661, 99991663, 99991668]);
 
+/** Lark's "TooManyRequest" code for Base calls. */
+const RATE_LIMIT_CODE = 1254290;
+const RATE_LIMIT_RETRIES = 4;
+
 export async function larkRequest<T>(
   method: 'GET' | 'POST' | 'PUT',
   path: string,
@@ -92,7 +96,8 @@ export async function larkRequest<T>(
     else if (v !== undefined && v !== '') url.searchParams.set(k, String(v));
   }
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let tokenRetried = false;
+  for (let attempt = 0; attempt <= RATE_LIMIT_RETRIES; attempt++) {
     const token = await tenantAccessToken();
     const res = await fetch(url, {
       method,
@@ -105,8 +110,14 @@ export async function larkRequest<T>(
     });
     const body = (await res.json().catch(() => ({}))) as LarkEnvelope<T>;
     const code = body.code ?? (res.ok ? 0 : -1);
-    if (attempt === 0 && (res.status === 401 || TOKEN_ERROR_CODES.has(code))) {
+    if (!tokenRetried && (res.status === 401 || TOKEN_ERROR_CODES.has(code))) {
+      tokenRetried = true;
       clearTokenCache();
+      continue;
+    }
+    // Lark throttles bursts (many tables read at once); wait and try again instead of failing the page.
+    if ((res.status === 429 || code === RATE_LIMIT_CODE) && attempt < RATE_LIMIT_RETRIES) {
+      await new Promise((r) => setTimeout(r, 400 * 2 ** attempt + Math.random() * 300));
       continue;
     }
     if (!res.ok || code !== 0) throw new LarkApiError(path, res.status, code, body.msg ?? '');
