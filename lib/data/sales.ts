@@ -3,12 +3,13 @@
 
 import { READ_CACHE_SECONDS } from '../../config/app.ts';
 import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
-import { CI_BASE, RESI_BASE, type CiTarget, type ResiProject, type SalesData } from '../sales-model.ts';
+import { CI_BASE, RESI_BASE, RESI_SALES_BASE, type CiTarget, type ResiProject, type ResiSale, type SalesData } from '../sales-model.ts';
 import { cached } from './cache.ts';
 import { datetime, display, num, single, users } from './parse.ts';
 import { fixturesEnabled } from './fixtures.ts';
 
 const RESI_2026 = 'tblMhiNP4OO3h3oA';
+const RESI_SALES = 'tblDTh0lmtTgrwH1'; // 🎉Sales Declaration_Resi New Case FYE26
 const CI_TARGETS = 'tbliUv5oMV1AVWCS';
 const CI_SE = 'tblpBSsofNilaC3G'; // SE 2026
 
@@ -34,8 +35,6 @@ export function mapResi(rec: LarkRecord, fixedYear: number | null): ResiProject 
     client: display(pick(f, 'APPLICATION NAME', 'Application Name')),
     sales: users(pick(f, 'SALES PIC', 'Sales Pic')),
     kwp: num(pick(f, 'SYSTEM SIZE(KWP)', 'System Size (kWp)')),
-    // No price column exists yet; these are the names the team is likely to give it.
-    price: num(pick(f, 'SELLING PRICE (RM)', 'Selling Price (RM)', 'SELLING PRICE', 'Selling Price', 'PRICE (RM)', 'TOTAL PRICE (RM)')),
     // The 2026 table rarely fills PROJECT STATUS; its Progress formula (1 = all stages done) does the job.
     status: single(pick(f, 'PROJECT STATUS', 'Status'))?.toUpperCase() ?? (progress == null ? null : progress >= 1 ? 'COMPLETED' : 'IN PROGRESS'),
     // The Flow field does not come back from the API, so the Stage No. formula stands in for it.
@@ -60,13 +59,26 @@ export function mapTarget(rec: LarkRecord): CiTarget {
   };
 }
 
-export async function loadResi(): Promise<SalesData<ResiProject[]>> {
-  // 2026 only, by the CEO Office's choice: the older table lacks sizes and prices.
-  try {
-    return { generatedAt: Date.now(), rows: (await read(RESI_BASE, RESI_2026)).map((r) => mapResi(r, 2026)), warnings: [] };
-  } catch (e) {
-    return { generatedAt: Date.now(), rows: [], warnings: [`Could not read "PROJECT RESIDENTIAL 2026": ${describe(e)}`] };
-  }
+export function mapResiSale(rec: LarkRecord): ResiSale {
+  const f = rec.fields ?? {};
+  return {
+    id: rec.record_id,
+    sales: users(f['Sales PIC']),
+    price: num(f['Selling Price']) ?? 0,
+    kwp: num(f['System Size (kWp)']),
+    // Deposit date is when the sale counts; fall back to when the case was declared.
+    at: datetime(f['Deposit Payment Date']) ?? datetime(f['Date Created']) ?? rec.created_time ?? null,
+  };
+}
+
+export async function loadResi(): Promise<SalesData<{ projects: ResiProject[]; sales: ResiSale[] }>> {
+  // Projects: 2026 only, by the CEO Office's choice. Sales and prices: the Sales Declaration table.
+  const warnings: string[] = [];
+  const [projects, sales] = await Promise.all([
+    read(RESI_BASE, RESI_2026).catch((e) => (warnings.push(`Could not read "PROJECT RESIDENTIAL 2026": ${describe(e)}`), [])),
+    read(RESI_SALES_BASE, RESI_SALES).catch((e) => (warnings.push(`Could not read "Sales Declaration_Resi": ${describe(e)}`), [])),
+  ]);
+  return { generatedAt: Date.now(), rows: { projects: projects.map((r) => mapResi(r, 2026)), sales: sales.map(mapResiSale) }, warnings };
 }
 
 /** Closed Sales cases per Sales PIC open_id. SE 2026 is the table the Target lookups sum, so counts match. */

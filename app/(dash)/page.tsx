@@ -8,7 +8,7 @@ export default async function Page() {
   let sales = null;
   if (await viewerIsCeo()) {
     const [r, c] = await Promise.all([loadResi(), loadCi()]);
-    sales = salesSummary(r.rows, c.rows, [...r.warnings, ...c.warnings]);
+    sales = salesSummary(r.rows.projects, r.rows.sales, c.rows, [...r.warnings, ...c.warnings]);
   }
   return (
     <Suspense>
