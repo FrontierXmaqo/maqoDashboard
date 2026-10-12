@@ -15,7 +15,8 @@ test('resi rows from both yearly tables, cancelled kept out of kWp', () => {
   assert.equal(old.status, 'COMPLETED');
   const done = mapResi({ record_id: 'r4', fields: { Progress: { type: 2, value: [1] }, 'Stage No.': { type: 2, value: [11] } } }, 2026);
   assert.equal(done.status, 'COMPLETED');
-  assert.equal(done.stage, 'Stage 11');
+  assert.equal(done.stage, 'Done');
+  assert.equal(mapResi({ record_id: 'r6', fields: { 'Stage No.': { type: 2, value: [8] } } }, 2026).stage, 'Installation Date');
   assert.equal(mapResi({ record_id: 'r5', fields: { Progress: { type: 2, value: [0.5] } } }, 2026).status, 'IN PROGRESS');
   assert.deepEqual(resiByPerson([now, cancel]), [{ p: { openId: 'ou_a', name: 'Amy', avatarUrl: null }, projects: 2, kwp: 6, ongoing: 1, completed: 0, cancelled: 1 }]);
 });
