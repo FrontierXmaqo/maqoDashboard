@@ -9,7 +9,6 @@ import { datetime, display, num, single, users } from './parse.ts';
 import { fixturesEnabled } from './fixtures.ts';
 
 const RESI_2026 = 'tblMhiNP4OO3h3oA';
-const RESI_OLD = 'tbl2BNmHHAo0fJlC';
 const CI_CASES = 'tblSVoYfNQq4BoDm'; // (Overall)SC
 const CI_TARGETS = 'tbliUv5oMV1AVWCS';
 
@@ -67,17 +66,12 @@ export function mapCi(rec: LarkRecord): CiCase {
 }
 
 export async function loadResi(): Promise<SalesData<ResiProject[]>> {
-  const warnings: string[] = [];
-  const get = async (table: string, label: string, year: number | null) => {
-    try {
-      return (await read(RESI_BASE, table)).map((r) => mapResi(r, year));
-    } catch (e) {
-      warnings.push(`Could not read "${label}": ${describe(e)}`);
-      return [];
-    }
-  };
-  const [now, old] = await Promise.all([get(RESI_2026, 'PROJECT RESIDENTIAL 2026', 2026), get(RESI_OLD, 'PROJECT RESIDENTIAL 2022 - 2025', null)]);
-  return { generatedAt: Date.now(), rows: [...now, ...old], warnings };
+  // 2026 only, by the CEO Office's choice: the older table lacks sizes and prices.
+  try {
+    return { generatedAt: Date.now(), rows: (await read(RESI_BASE, RESI_2026)).map((r) => mapResi(r, 2026)), warnings: [] };
+  } catch (e) {
+    return { generatedAt: Date.now(), rows: [], warnings: [`Could not read "PROJECT RESIDENTIAL 2026": ${describe(e)}`] };
+  }
 }
 
 export async function loadCi(): Promise<SalesData<{ cases: CiCase[]; targets: CiTarget[] }>> {

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useData } from '../DataProvider';
 import MyWork from './MyWork';
-import { Avatar, Bar, DeptChips, Icon, Legend, LoadCell, Pill, Seg, SegBar, Stepper, TaskTable, Who, projectMeta, NotSet } from '../ui';
+import { Avatar, Bar, DeptChips, Icon, StagePill, Legend, LoadCell, Pill, Seg, SegBar, Stepper, TaskTable, Who, projectMeta, NotSet } from '../ui';
 import { dayToIso, fd, fdy, isoToDay, monthRange, people, plural, weekRange, weekday } from '../../lib/dates';
 import { STAGES, STATUS, personInDept, taskInDept, type Model, type PersonX, type StatusKey, type Tone } from '../../lib/model';
 import type { Stage } from '../../lib/types';
@@ -29,10 +29,11 @@ function attention(M: Model): Att[] {
   return out.sort((a, b) => b.sev - a.sev);
 }
 
-function AttentionCard({ M, extra = [] }: { M: Model; extra?: SalesSummary['alerts'] }) {
+function AttentionCard({ M, extra = [], tasks = true }: { M: Model; extra?: SalesSummary['alerts']; tasks?: boolean }) {
   const { open } = useData();
   const router = useRouter();
-  const att = useMemo(() => attention(M), [M]);
+  const all = useMemo(() => attention(M), [M]);
+  const att = tasks ? all : [];
   return (
     <section className="card" aria-labelledby="h-att">
       <div className="spread">
@@ -314,11 +315,8 @@ function EmployeesCard({ M, sales, limit, onShowAll }: { M: Model; sales: SalesS
   }
   const all = [...byId.values()];
   const depts = [...new Set(all.map((r) => r.dept))].sort();
-  const order: Record<StatusKey, number> = { overloaded: 0, working: 1, free: 2 };
-  const list = all
-    .filter((r) => dept === 'All' || r.dept === dept)
-    // People who need a look first: overdue work, then overloaded, then busiest.
-    .sort((a, b) => (b.person?.overdueN ?? 0) - (a.person?.overdueN ?? 0) || (a.person ? order[a.person.key] : 3) - (b.person ? order[b.person.key] : 3) || (b.person?.n ?? 0) - (a.person?.n ?? 0) || a.dept.localeCompare(b.dept) || a.p.name.localeCompare(b.p.name));
+  const list = all.filter((r) => dept === 'All' || r.dept === dept).sort((a, b) => a.dept.localeCompare(b.dept) || a.p.name.localeCompare(b.p.name));
+  const projectsOf = (p: PersonX) => [...new Set(p.open.map((t) => t.projectNames).filter((n) => n !== 'No project'))];
   const shown = limit ? list.slice(0, limit) : list;
   const salesLine = (s: SalesSummary['people'][number]) =>
     s.dept === 'Residential' ? `${plural(s.projects, 'project')}, ${kwp(s.kwp)} this year` : `${rmk(s.closedRm)} closed, ${rmk(s.hotRm)} hot leads`;
@@ -337,27 +335,32 @@ function EmployeesCard({ M, sales, limit, onShowAll }: { M: Model; sales: SalesS
       </div>
       <div className="tbl">
         <table>
-          <thead><tr><th>Employee</th><th>Department</th><th>Status</th><th>Working on</th><th>Open tasks</th></tr></thead>
+          <thead><tr><th>Employee</th><th>Department</th><th>Projects</th><th>Tasks they are doing</th></tr></thead>
           <tbody>
             {shown.map((r) => (
               <tr key={r.id} className="click" onClick={() => (r.person ? open('emp', r.id) : router.push(r.dept === 'C&I' ? '/ci' : '/residential'))}>
-                <td>{r.person ? <Who p={r.person} /> : <span className="who"><Avatar p={r.p} sm /><b>{r.p.name}</b></span>}</td>
+                <td><span className="who"><Avatar p={r.p} sm /><b>{r.p.name}</b></span></td>
                 <td>{r.dept}</td>
-                <td>{r.person ? <Pill tone={STATUS[r.person.key].tone}>{STATUS[r.person.key].label}</Pill> : <Pill tone="n">Sales</Pill>}</td>
-                <td style={{ maxWidth: 340 }}>
-                  {r.person?.cur ? (
-                    <>
-                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.person.cur.title}</div>
-                      <div style={{ marginTop: 4 }}><Stepper t={r.person.cur} /></div>
-                    </>
-                  ) : r.sales ? (
-                    <span>{salesLine(r.sales)}</span>
-                  ) : (
-                    <span className="muted">No open task</span>
-                  )}
-                  {r.person?.cur && r.sales && <div className="muted">{salesLine(r.sales)}</div>}
+                <td style={{ maxWidth: 260 }}>
+                  {r.sales && <div>{salesLine(r.sales)}</div>}
+                  {r.person && projectsOf(r.person).map((n) => <div key={n}>{n}</div>)}
+                  {!r.sales && (!r.person || !projectsOf(r.person).length) && <span className="muted">—</span>}
                 </td>
-                <td className="num">{r.person ? r.person.n : '—'}</td>
+                <td style={{ maxWidth: 340 }}>
+                  {r.person?.open.length ? (
+                    <>
+                      {r.person.open.slice(0, 3).map((t) => (
+                        <div key={t.id} className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</span>
+                          <StagePill t={t} />
+                        </div>
+                      ))}
+                      {r.person.open.length > 3 && <div className="muted">+{r.person.open.length - 3} more</div>}
+                    </>
+                  ) : (
+                    <span className="muted">{r.sales ? 'Sales' : 'No open task'}</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -396,17 +399,15 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
   const pace = yearPace(sales.at);
   const taskCard = (d: string) => {
     const open = M.sTasks.filter((t) => !t.done && taskInDept(t, d));
-    const od = open.filter((t) => t.overdue).length;
-    const ppl = M.sPeople.filter((p) => personInDept(p, d));
+    const projects = new Set(open.map((t) => t.projectNames).filter((n) => n !== 'No project')).size;
     return (
-      <DeptCard key={d} href={d === 'O&M' ? '/om' : '/engineering'} title={d} big={open.length} bigL="open tasks"
-        subs={[[od, 'overdue'], [`${ppl.filter((p) => p.key === 'free').length} of ${ppl.length}`, 'people free']]}
-        flag={od ? <Pill tone="r">Overdue</Pill> : undefined} />
+      <DeptCard key={d} href={d === 'O&M' ? '/om' : '/engineering'} title={d} big={open.length} bigL="tasks in progress"
+        subs={[[projects, 'projects'], [M.sPeople.filter((p) => personInDept(p, d)).length, 'people']]} />
     );
   };
   const salesRm = (ci?.closedRm ?? 0) + (resi?.rm ?? 0);
   const soldKwp = (resi?.kwp ?? 0) + (ci?.closedKwp ?? 0);
-  const overdue = M.sTasks.filter((t) => t.overdue).length;
+  const openTasks = M.sTasks.filter((t) => !t.done).length;
   const year = resi?.year ?? ci?.year ?? new Date(sales.at).getFullYear();
   const resiTarget = resi?.target.rm && resi.rm != null ? { done: resi.rm, target: resi.target.rm, fmt: rmk } : { done: resi?.kwp ?? 0, target: resi?.target.kwp ?? null, fmt: kwp };
   return (
@@ -432,12 +433,12 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
         <Link className="kpi" href="/ci" style={{ textDecoration: 'none' }}>
           <span className="muted">C&amp;I hot pipeline</span><span className="v num">{rmk(ci?.hotRm ?? 0)}</span><span className="muted">{plural(ci?.hotN ?? 0, 'hot lead')}</span>
         </Link>
-        <Link className="kpi" href="/tasks?status=overdue" style={{ textDecoration: 'none' }}>
-          <span className="muted">Overdue tasks</span><span className="v num" style={{ color: overdue ? 'var(--r-fg)' : undefined }}>{overdue}</span><span className="muted">across all departments</span>
+        <Link className="kpi" href="/residential" style={{ textDecoration: 'none' }}>
+          <span className="muted">Residential projects {year}</span><span className="v num">{resi?.projects ?? 0}</span><span className="muted">{resi?.ongoing ?? 0} ongoing, {resi?.completed ?? 0} completed</span>
         </Link>
-        <a className="kpi" href="#team" style={{ textDecoration: 'none' }}>
-          <span className="muted">People free now</span><span className="v num">{M.sPeople.filter((p) => p.key === 'free').length}</span><span className="muted">of {people(M.sPeople.length)} with tasks</span>
-        </a>
+        <Link className="kpi" href="/tasks" style={{ textDecoration: 'none' }}>
+          <span className="muted">Tasks in progress</span><span className="v num">{openTasks}</span><span className="muted">across all departments</span>
+        </Link>
       </section>
 
       <section className="card" aria-labelledby="h-tgt">
@@ -466,7 +467,7 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
       </div>
       <p className="muted">Not connected to Lark yet: {NOT_CONNECTED.join(', ')}.</p>
 
-      <AttentionCard M={M} extra={sales.alerts} />
+      <AttentionCard M={M} extra={sales.alerts} tasks={false} />
       <EmployeesCard M={M} sales={sales} limit={showAll ? undefined : 10} onShowAll={() => setShowAll(true)} />
     </>
   );

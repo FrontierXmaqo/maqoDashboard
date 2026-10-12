@@ -147,11 +147,6 @@ export function salesSummary(resi: ResiProject[], cases: CiCase[], targets: CiTa
   if (cy && target) alerts.push({ text: `C&I closed RM ${Math.round(tot(closed) / 1e3)}k of RM ${(target / 1e6).toFixed(1)}M target (${Math.round((tot(closed) / target) * 100)}%)`, href: '/ci' });
   const noStatus = cl.filter((c) => c.status === 'other').length;
   if (noStatus) alerts.push({ text: `${noStatus} C&I cases in ${cy} have no client status`, href: '/ci' });
-  if (ry) {
-    const prev = resi.filter((r) => r.year === ry - 1);
-    const noKwp = prev.filter((r) => r.kwp == null).length;
-    if (noKwp) alerts.push({ text: `${noKwp} of ${prev.length} Residential projects in ${ry - 1} have no system size in Lark`, href: '/residential' });
-  }
   return {
     at: Date.now(),
     alerts,
