@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { closedCounts, mapResi, mapTarget } from '../lib/data/sales.ts';
-import { resiByPerson, salesSummary } from '../lib/sales-model.ts';
+import { closedCounts, mapResi, mapResiSale, mapTarget } from '../lib/data/sales.ts';
+import { financialYear, resiByPerson, resiSalesStats, salesSummary } from '../lib/sales-model.ts';
 
 const amy = [{ id: 'ou_a', name: 'Amy' }];
 const ben = [{ id: 'ou_b', name: 'Ben' }];
@@ -17,7 +17,7 @@ test('resi rows from both yearly tables, cancelled kept out of kWp', () => {
   assert.equal(done.status, 'COMPLETED');
   assert.equal(done.stage, 'Stage 11');
   assert.equal(mapResi({ record_id: 'r5', fields: { Progress: { type: 2, value: [0.5] } } }, 2026).status, 'IN PROGRESS');
-  assert.deepEqual(resiByPerson([now, cancel]), [{ p: { openId: 'ou_a', name: 'Amy', avatarUrl: null }, projects: 2, kwp: 6, rm: 0, pricedKwp: 0, ongoing: 1, completed: 0, cancelled: 1 }]);
+  assert.deepEqual(resiByPerson([now, cancel]), [{ p: { openId: 'ou_a', name: 'Amy', avatarUrl: null }, projects: 2, kwp: 6, ongoing: 1, completed: 0, cancelled: 1 }]);
 });
 
 test('C&I Target rows read the lookup and formula shapes Lark returns', () => {
@@ -32,21 +32,27 @@ test('C&I Target rows read the lookup and formula shapes Lark returns', () => {
 test('overview summary uses the latest year, skips cancelled projects and C&I rows with no SC', () => {
   const r = (year: number, kwp: number, status: string | null) => mapResi({ record_id: String(Math.random()), fields: { 'SYSTEM SIZE(KWP)': kwp, 'PROJECT STATUS': status } }, year);
   const t = (sc: unknown[], target: number, ach: number) => mapTarget({ record_id: String(Math.random()), fields: { SC: sc, 'Sales Target (RM)': target, 'Sales Achivement': { type: 2, value: [ach] }, 'Sales Pipeline (Hot Lead)': { type: 2, value: [40] } } });
-  const s = salesSummary([r(2026, 5, 'COMPLETED'), r(2026, 9, 'CANCEL BY CLIENT'), r(2025, 7, null)], [t(amy, 1000, 100), t([], 5000, 999)], []);
-  assert.deepEqual(s.resi, { year: 2026, kwp: 5, projects: 1, ongoing: 0, completed: 1, rm: null, target: { rm: null, kwp: null } });
+  const s = salesSummary([r(2026, 5, 'COMPLETED'), r(2026, 9, 'CANCEL BY CLIENT'), r(2025, 7, null)], [], [t(amy, 1000, 100), t([], 5000, 999)], [], Date.UTC(2026, 9, 12));
+  assert.equal(s.resi?.kwp, 5);
+  assert.equal(s.resi?.projects, 1);
   assert.deepEqual(s.ci, { closedRm: 100, closedKwp: 0, closedN: 0, target: 1000, hotRm: 40, pipelineRm: 0 });
-  assert.deepEqual(s.alerts.map((x) => x.href), ['/ci']);
+  assert.deepEqual(s.alerts.map((x) => x.href), ['/residential', '/ci']); // no resi sales yet, behind pace
   assert.equal(s.people.length, 1);
   assert.equal(s.people[0].dept, 'C&I');
 });
 
-test('residential selling price is summed per person when the column exists', () => {
-  const a = mapResi({ record_id: 'x1', fields: { 'SALES PIC': amy, 'SYSTEM SIZE(KWP)': 10, 'SELLING PRICE (RM)': 40000 } }, 2026);
-  const b = mapResi({ record_id: 'x2', fields: { 'SALES PIC': amy, 'SYSTEM SIZE(KWP)': 5 } }, 2026);
-  const [row] = resiByPerson([a, b]);
-  assert.equal(row.rm, 40000);
-  assert.equal(row.pricedKwp, 10); // RM/kWp only uses priced projects
-  assert.equal(row.kwp, 15);
+test('residential sales: financial year from September, this month, and RM 1M a month target', () => {
+  const now = Date.UTC(2026, 9, 12); // 12 Oct 2026
+  assert.equal(financialYear(now).label, 'FYE 2026/27');
+  assert.equal(financialYear(Date.UTC(2026, 7, 31)).label, 'FYE 2025/26');
+  const sale = (y: number, m: number, price: number, kw: number) => mapResiSale({ record_id: String(Math.random()), fields: { 'Sales PIC': amy, 'Selling Price': price, 'System Size (kWp)': { type: 2, value: [kw] }, 'Deposit Payment Date': Date.UTC(y, m, 10) } });
+  const st = resiSalesStats([sale(2026, 8, 265476, 10), sale(2026, 9, 88800, 4), sale(2026, 5, 50000, 2)], now);
+  assert.equal(st.monthRm, 88800);
+  assert.equal(st.fyRm, 354276); // Sep + Oct, June is last financial year
+  assert.equal(st.fyCases, 2);
+  assert.equal(st.fyTarget, 12_000_000);
+  assert.equal(st.byMonth.at(-1)?.rm, 88800);
+  assert.equal(st.byPerson[0].kwp, 14);
 });
 
 test('closed deals are counted per Sales PIC, whatever the status spacing', () => {

@@ -9,7 +9,7 @@ import { Avatar, Bar, DeptChips, Icon, StagePill, Legend, LoadCell, Pill, Seg, S
 import { dayToIso, fd, fdy, isoToDay, monthRange, people, plural, weekRange, weekday } from '../../lib/dates';
 import { STAGES, STATUS, personInDept, taskInDept, type Model, type PersonX, type StatusKey, type Tone } from '../../lib/model';
 import type { Stage } from '../../lib/types';
-import { yearPace, type SalesSummary } from '../../lib/sales-model';
+import { RESI_MONTHLY_TARGET, yearPace, type SalesSummary } from '../../lib/sales-model';
 import { rmk, kwp } from './SalesBits';
 
 type Att = { sev: number; tone: Tone; tag: string; title: string; meta: string; ref: ['task' | 'emp', string] };
@@ -319,7 +319,7 @@ function EmployeesCard({ M, sales, limit, onShowAll }: { M: Model; sales: SalesS
   const projectsOf = (p: PersonX) => [...new Set(p.open.map((t) => t.projectNames).filter((n) => n !== 'No project'))];
   const shown = limit ? list.slice(0, limit) : list;
   const salesLine = (s: SalesSummary['people'][number]) =>
-    s.dept === 'Residential' ? `${plural(s.projects, 'project')}, ${kwp(s.kwp)} this year` : `${rmk(s.closedRm)} closed (${plural(s.projects, 'deal')}), ${rmk(s.hotRm)} hot leads`;
+    s.dept === 'Residential' ? `${rmk(s.closedRm)} sold (${plural(s.projects, 'case')}, ${kwp(s.kwp)}) this financial year` : `${rmk(s.closedRm)} closed (${plural(s.projects, 'deal')}), ${rmk(s.hotRm)} hot leads`;
   return (
     <section className="card" id="team" aria-labelledby="h-emp">
       <div className="spread">
@@ -405,11 +405,11 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
         subs={[[projects, 'projects'], [M.sPeople.filter((p) => personInDept(p, d)).length, 'people']]} />
     );
   };
-  const salesRm = (ci?.closedRm ?? 0) + (resi?.rm ?? 0);
+  const rs = resi?.sales;
+  const salesRm = (ci?.closedRm ?? 0) + (rs?.fyRm ?? 0);
   const soldKwp = (resi?.kwp ?? 0) + (ci?.closedKwp ?? 0);
   const openTasks = M.sTasks.filter((t) => !t.done).length;
   const year = resi?.year ?? new Date(sales.at).getFullYear();
-  const resiTarget = resi?.target.rm && resi.rm != null ? { done: resi.rm, target: resi.target.rm, fmt: rmk } : { done: resi?.kwp ?? 0, target: resi?.target.kwp ?? null, fmt: kwp };
   return (
     <>
       <div className="topbar">
@@ -424,7 +424,7 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
         <Link className="kpi big" href="/ci" style={{ textDecoration: 'none' }}>
           <span className="muted">Sales achieved</span>
           <span className="v num">{rmk(salesRm)}</span>
-          <span className="muted">{resi?.rm != null ? `C&I ${rmk(ci?.closedRm ?? 0)} + Resi ${rmk(resi.rm)}` : `C&I only, ${plural(ci?.closedN ?? 0, 'closed deal')}. Resi price not in Lark yet`}</span>
+          <span className="muted">C&amp;I {rmk(ci?.closedRm ?? 0)} ({plural(ci?.closedN ?? 0, 'deal')}) + Resi {rmk(rs?.fyRm ?? 0)} ({rs?.fyLabel})</span>
         </Link>
         <Link className="kpi" href="/residential" style={{ textDecoration: 'none' }}>
           <span className="muted">kWp sold {year}</span><span className="v num">{kwp(soldKwp)}</span>
@@ -443,16 +443,16 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
 
       <section className="card" aria-labelledby="h-tgt">
         <div className="spread">
-          <h2 id="h-tgt">Sales against target, {year}</h2>
-          <span className="muted">Line = where we should be today ({Math.round(pace * 100)}% of the year gone)</span>
+          <h2 id="h-tgt">Sales against target</h2>
+          <span className="muted">Line in each bar = where we should be today</span>
         </div>
-        <TargetRow label="Residential" href="/residential" pace={pace} {...resiTarget} missing="No team target set yet. Send the 2026 target and it shows here." />
+        <TargetRow label={`Residential, ${rs?.fyLabel ?? ''}`} href="/residential" pace={rs?.fyPace ?? pace} done={rs?.fyRm ?? 0} target={rs?.fyTarget ?? null} fmt={rmk} missing="No Residential sales data." />
         <TargetRow label="C&I" href="/ci" pace={pace} done={ci?.closedRm ?? 0} target={ci?.target || null} fmt={rmk} missing="No targets in the C&I Target table." />
       </section>
 
       <div className="dgrid">
         {resi ? (
-          <DeptCard href="/residential" title="Residential sales" big={resi.rm != null ? rmk(resi.rm) : kwp(resi.kwp)} bigL={`${resi.year}, ${plural(resi.projects, 'project')}${resi.rm != null ? `, ${kwp(resi.kwp)}` : ''}`} subs={[[resi.ongoing, 'ongoing'], [resi.completed, 'completed']]} />
+          <DeptCard href="/residential" title="Residential sales" big={rmk(resi.sales.fyRm)} bigL={`${resi.sales.fyLabel}, ${plural(resi.sales.fyCases, 'case')}, ${kwp(resi.sales.fyKwp)}`} subs={[[rmk(resi.sales.monthRm), `this month (target ${rmk(RESI_MONTHLY_TARGET)})`], [resi.ongoing, 'projects ongoing']]} />
         ) : (
           <div className="dcard off"><b>Residential sales</b><p className="muted">No projects came back from Lark.</p></div>
         )}

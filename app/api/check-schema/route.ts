@@ -4,7 +4,6 @@
 import { runSchemaCheck } from '../../../lib/schema/run.ts';
 import { listFields, listTables } from '../../../lib/lark/bitable.ts';
 import { fieldTypeName } from '../../../config/schema.ts';
-import { searchAllRecords } from '../../../lib/lark/records.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,18 +30,6 @@ async function salesBaseLines(): Promise<string[]> {
       lines.push(`  ✗ Cannot read: ${e instanceof Error ? e.message : String(e)}`);
       lines.push('  Add the dashboard app to this Base (Base ⋯ menu > add app / collaborator) with read access.');
     }
-  }
-  // shortcut: temporary look at the Residential selling price table, remove once mapped.
-  try {
-    const base = 'Hp9sbVJg8aHPIZs4U2FlpCMMgpd', table = 'tblDTh0lmtTgrwH1';
-    const tables = await listTables(base);
-    lines.push(`\n=== Resi price Base: ${tables.map((t) => `${t.name} (${t.table_id})`).join(', ')}`);
-    for (const f of await listFields(base, table)) lines.push(`  · ${f.field_name} [${fieldTypeName(f.type)}]`);
-    const recs = await searchAllRecords(base, table, { automatic_fields: true });
-    lines.push(`  rows: ${recs.length}`);
-    for (const r of recs.slice(0, 3)) lines.push('  ' + JSON.stringify(Object.fromEntries(Object.entries(r.fields ?? {}).map(([k, v]) => [k, typeof v === 'string' && v.length > 40 ? '…' : Array.isArray(v) && v[0]?.en_name ? v[0].en_name : v]))).slice(0, 1500));
-  } catch (e) {
-    lines.push(`  resi price check failed: ${e instanceof Error ? e.message : String(e)}`);
   }
   return lines;
 }
