@@ -2,11 +2,12 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useData } from '../DataProvider';
 import MyWork from './MyWork';
-import { DeptChips, Icon, Legend, LoadCell, Pill, Seg, SegBar, Stepper, TaskTable, Who, projectMeta, NotSet } from '../ui';
+import { Avatar, DeptChips, Icon, Legend, LoadCell, Pill, Seg, SegBar, Stepper, TaskTable, Who, projectMeta, NotSet } from '../ui';
 import { dayToIso, fd, fdy, isoToDay, monthRange, people, plural, weekRange, weekday } from '../../lib/dates';
-import { STAGES, STATUS, personInDept, taskInDept, type Model, type StatusKey, type Tone } from '../../lib/model';
+import { STAGES, STATUS, personInDept, taskInDept, type Model, type PersonX, type StatusKey, type Tone } from '../../lib/model';
 import type { Stage } from '../../lib/types';
 import type { SalesSummary } from '../../lib/sales-model';
 import { rmk, kwp } from './SalesBits';
@@ -288,10 +289,78 @@ function DeptCard({ href, title, big, bigL, subs, flag }: { href: string; title:
 
 const NOT_CONNECTED = ['Marketing', 'Licensing', 'Procurement', 'Finance', 'HR'];
 
-/** CEO view: every department at a glance, then who is free. Layout follows the Department Views prototype. */
+type EmpRow = { id: string; p: PersonX | SalesSummary['people'][number]['p']; person?: PersonX; dept: string; sales?: SalesSummary['people'][number] };
+
+/** Everyone the CEO can see: people from the org chart and tasks, plus salespeople from the sales tables. */
+function EmployeesCard({ M, sales }: { M: Model; sales: SalesSummary }) {
+  const { open } = useData();
+  const router = useRouter();
+  const [dept, setDept] = useState('All');
+  const byId = new Map<string, EmpRow>(M.sPeople.map((p) => [p.openId, { id: p.openId, p, person: p, dept: p.deptLabel }]));
+  for (const s of sales.people) {
+    const r = byId.get(s.p.openId);
+    if (r) {
+      r.sales = s;
+      if (!r.person?.dept) r.dept = s.dept;
+    } else byId.set(s.p.openId, { id: s.p.openId, p: s.p, dept: s.dept, sales: s });
+  }
+  const all = [...byId.values()];
+  const depts = [...new Set(all.map((r) => r.dept))].sort();
+  const order: Record<StatusKey, number> = { overloaded: 0, working: 1, free: 2 };
+  const list = all
+    .filter((r) => dept === 'All' || r.dept === dept)
+    .sort((a, b) => a.dept.localeCompare(b.dept) || (a.person ? order[a.person.key] : 3) - (b.person ? order[b.person.key] : 3) || a.p.name.localeCompare(b.p.name));
+  const salesLine = (s: SalesSummary['people'][number]) =>
+    s.dept === 'Residential' ? `${plural(s.projects, 'project')}, ${kwp(s.kwp)} this year` : `${rmk(s.closedRm)} closed, ${rmk(s.hotRm)} hot leads`;
+  return (
+    <section className="card" id="team" aria-labelledby="h-emp">
+      <div className="spread">
+        <h2 id="h-emp">Every employee</h2>
+        <span className="muted num">{people(all.length)}</span>
+      </div>
+      <div className="chips" role="group" aria-label="Department">
+        {['All', ...depts].map((d) => (
+          <button key={d} type="button" className="chip sq" aria-pressed={dept === d} onClick={() => setDept(d)}>
+            {d} <span className="num" style={{ opacity: 0.7 }}>{d === 'All' ? all.length : all.filter((r) => r.dept === d).length}</span>
+          </button>
+        ))}
+      </div>
+      <div className="tbl">
+        <table>
+          <thead><tr><th>Employee</th><th>Department</th><th>Status</th><th>Working on</th><th>Open tasks</th></tr></thead>
+          <tbody>
+            {list.map((r) => (
+              <tr key={r.id} className="click" onClick={() => (r.person ? open('emp', r.id) : router.push(r.dept === 'C&I' ? '/ci' : '/residential'))}>
+                <td>{r.person ? <Who p={r.person} /> : <span className="who"><Avatar p={r.p} sm /><b>{r.p.name}</b></span>}</td>
+                <td>{r.dept}</td>
+                <td>{r.person ? <Pill tone={STATUS[r.person.key].tone}>{STATUS[r.person.key].label}</Pill> : <Pill tone="n">Sales</Pill>}</td>
+                <td style={{ maxWidth: 340 }}>
+                  {r.person?.cur ? (
+                    <>
+                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.person.cur.title}</div>
+                      <div style={{ marginTop: 4 }}><Stepper t={r.person.cur} /></div>
+                    </>
+                  ) : r.sales ? (
+                    <span>{salesLine(r.sales)}</span>
+                  ) : (
+                    <span className="muted">No open task</span>
+                  )}
+                  {r.person?.cur && r.sales && <div className="muted">{salesLine(r.sales)}</div>}
+                </td>
+                <td className="num">{r.person ? r.person.n : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="muted">Salespeople come from the Residential and C&amp;I sales tables. Other staff appear here once they are in the Lark org chart the app can see, or have a task.</p>
+    </section>
+  );
+}
+
+/** CEO view: every department at a glance, what needs attention, then every employee. Layout follows the Department Views prototype. */
 function CeoOverview({ sales }: { sales: SalesSummary }) {
   const { M } = useData();
-  const [teamStatus, setTeamStatus] = useState<StatusKey | 'all'>('all');
   const taskCard = (d: string) => {
     const open = M.sTasks.filter((t) => !t.done && taskInDept(t, d));
     const od = open.filter((t) => t.overdue).length;
@@ -312,7 +381,6 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
         </div>
       </div>
       {sales.warnings.map((w) => <div key={w} className="banner warn" role="status">{w}</div>)}
-      <AttentionCard M={M} />
       <div className="dgrid">
         {resi ? (
           <DeptCard href="/residential" title="Residential sales" big={kwp(resi.kwp)} bigL={`${resi.year}, ${plural(resi.projects, 'project')}`} subs={[[resi.ongoing, 'ongoing'], [resi.completed, 'completed']]} />
@@ -329,7 +397,8 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
         {taskCard('Engineering')}
         {NOT_CONNECTED.map((d) => <div key={d} className="dcard off"><b>{d}</b><p className="muted">Not connected to Lark yet.</p></div>)}
       </div>
-      <TeamCard M={M} status={teamStatus} setStatus={setTeamStatus} />
+      <AttentionCard M={M} />
+      <EmployeesCard M={M} sales={sales} />
     </>
   );
 }

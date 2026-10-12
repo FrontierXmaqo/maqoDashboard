@@ -104,6 +104,8 @@ export function ciByPerson(cases: CiCase[], targets: CiTarget[]): CiPersonRow[] 
 export type SalesSummary = {
   resi: { year: number; kwp: number; projects: number; ongoing: number; completed: number } | null;
   ci: { year: number; closedRm: number; closedN: number; target: number; hotRm: number; hotN: number } | null;
+  /** Salespeople with their latest-year numbers, so the CEO sees them even when the org chart can't. */
+  people: { p: PersonRef; dept: 'Residential' | 'C&I'; projects: number; kwp: number; closedRm: number; hotRm: number }[];
   warnings: string[];
 };
 
@@ -119,6 +121,10 @@ export function salesSummary(resi: ResiProject[], cases: CiCase[], targets: CiTa
   const hot = cl.filter((c) => c.status === 'hot');
   return {
     resi: ry ? { year: ry, kwp: rl.reduce((s, r) => s + (r.kwp ?? 0), 0), projects: rl.length, ongoing: rl.filter(resiOpen).length, completed: rl.filter((r) => r.status === 'COMPLETED').length } : null,
+    people: [
+      ...resiByPerson(resi.filter((r) => r.year === ry)).filter((r) => r.p.openId).map((r) => ({ p: r.p, dept: 'Residential' as const, projects: r.projects, kwp: r.kwp, closedRm: 0, hotRm: 0 })),
+      ...ciByPerson(cl, []).filter((r) => r.p.openId).map((r) => ({ p: r.p, dept: 'C&I' as const, projects: r.closedN, kwp: r.closedKwp, closedRm: r.closedRm, hotRm: r.hotRm })),
+    ],
     ci: cy ? { year: cy, closedRm: tot(closed), closedN: closed.length, target: targets.reduce((s, t) => s + (t.sales[0] ? t.target ?? 0 : 0), 0), hotRm: tot(hot), hotN: hot.length } : null,
     warnings,
   };
