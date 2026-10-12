@@ -42,7 +42,7 @@ test('C&I totals fall back to kWp × RM/kWp and targets add up per person', () =
 test('overview summary uses the latest year and skips cancelled projects', () => {
   const r = (year: number, kwp: number, status: string | null) => mapResi({ record_id: String(Math.random()), fields: { 'SYSTEM SIZE(KWP)': kwp, 'PROJECT STATUS': status } }, year);
   const c = (status: string, total: number, year: string) => mapCi({ record_id: String(Math.random()), fields: { 'Client Status': status, 'Total (RM)': total, Year: year } });
-  const s = salesSummary([r(2026, 5, 'COMPLETED'), r(2026, 9, 'CANCEL BY CLIENT'), r(2025, 7, null)], [c('Closed Sales', 100, '2026'), c('Hot Lead', 40, '2026'), c('Closed Sales', 999, '2025')], [{ sales: [], target: 1000 }], []);
+  const s = salesSummary([r(2026, 5, 'COMPLETED'), r(2026, 9, 'CANCEL BY CLIENT'), r(2025, 7, null)], [c('Closed Sales', 100, '2026'), c('Hot Lead', 40, '2026'), c('Closed Sales', 999, '2025')], [{ sales: [{ openId: 'ou_a', name: 'Amy', avatarUrl: null }], target: 1000 }, { sales: [], target: 5 }], []);
   assert.deepEqual(s.resi, { year: 2026, kwp: 5, projects: 1, ongoing: 0, completed: 1 });
   assert.deepEqual(s.ci, { year: 2026, closedRm: 100, closedN: 1, target: 1000, hotRm: 40, hotN: 1 });
 });

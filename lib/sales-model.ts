@@ -107,6 +107,7 @@ export type SalesSummary = {
   warnings: string[];
 };
 
+/** Targets with no salesperson are skipped, as on the C&I page, so both show the same total. */
 export function salesSummary(resi: ResiProject[], cases: CiCase[], targets: CiTarget[], warnings: string[]): SalesSummary {
   const latest = (ys: (number | null)[]) => Math.max(0, ...ys.filter((y): y is number => y != null)) || null;
   const ry = latest(resi.map((r) => r.year));
@@ -118,7 +119,7 @@ export function salesSummary(resi: ResiProject[], cases: CiCase[], targets: CiTa
   const hot = cl.filter((c) => c.status === 'hot');
   return {
     resi: ry ? { year: ry, kwp: rl.reduce((s, r) => s + (r.kwp ?? 0), 0), projects: rl.length, ongoing: rl.filter(resiOpen).length, completed: rl.filter((r) => r.status === 'COMPLETED').length } : null,
-    ci: cy ? { year: cy, closedRm: tot(closed), closedN: closed.length, target: targets.reduce((s, t) => s + (t.target ?? 0), 0), hotRm: tot(hot), hotN: hot.length } : null,
+    ci: cy ? { year: cy, closedRm: tot(closed), closedN: closed.length, target: targets.reduce((s, t) => s + (t.sales[0] ? t.target ?? 0 : 0), 0), hotRm: tot(hot), hotN: hot.length } : null,
     warnings,
   };
 }
