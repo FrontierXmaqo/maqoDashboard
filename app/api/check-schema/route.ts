@@ -4,6 +4,7 @@
 import { runSchemaCheck } from '../../../lib/schema/run.ts';
 import { listFields, listTables } from '../../../lib/lark/bitable.ts';
 import { fieldTypeName } from '../../../config/schema.ts';
+import { searchAllRecords } from '../../../lib/lark/records.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,28 @@ async function salesBaseLines(): Promise<string[]> {
       lines.push(`  ✗ Cannot read: ${e instanceof Error ? e.message : String(e)}`);
       lines.push('  Add the dashboard app to this Base (Base ⋯ menu > add app / collaborator) with read access.');
     }
+  }
+  // shortcut: temporary check of which C&I table's closed deals match the Target table, remove after.
+  try {
+    for (const [t, st, kw, tot, pic] of [
+      ['tblSVoYfNQq4BoDm', 'Client Status', 'System Size (kWp)', 'Total (RM)', 'Sales PIC'],
+      ['tblpBSsofNilaC3G', 'Client Status', 'System Size (kWp)', 'Total Project Value (PV)', 'Sales PIC'],
+    ] as const) {
+      const recs = await searchAllRecords(SALES_BASES[1].token, t);
+      const agg: Record<string, [number, number, number]> = {};
+      for (const r of recs) {
+        const f = r.fields ?? {};
+        const s = JSON.stringify(f[st] ?? '').toLowerCase();
+        if (!s.includes('closed')) continue;
+        const who = (f[pic] as { name?: string }[] | undefined)?.[0]?.name ?? '?';
+        const v = (x: unknown): number => (typeof x === 'number' ? x : (x as { value?: number[] })?.value?.[0] ?? 0);
+        const a = (agg[who + ' ' + JSON.stringify(f['Year'] ?? '')] ??= [0, 0, 0]);
+        a[0]++; a[1] += v(f[tot]); a[2] += v(f[kw]);
+      }
+      lines.push(`\n--- closed in ${t} (${recs.length} rows): ${JSON.stringify(agg)}`);
+    }
+  } catch (e) {
+    lines.push(`  closed check failed: ${e instanceof Error ? e.message : String(e)}`);
   }
   return lines;
 }
