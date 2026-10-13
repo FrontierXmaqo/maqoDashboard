@@ -42,6 +42,11 @@ export function mapResi(rec: LarkRecord, fixedYear: number | null): ResiProject 
     year: fixedYear ?? yearOf(installedAt),
     createdAt: rec.created_time ?? null,
     installedAt,
+    events: [
+      ...['SITE VISIT DATE', 'SITE VISIT 2ND'].map((k) => ({ kind: 'Site visit' as const, at: datetime(f[k]) })),
+      ...['EXECUTED DATE INSTALLATION ( DAY 1)', 'EXECUTED DATE INSTALLATION (DAY 2)'].map((k) => ({ kind: 'Installation' as const, at: datetime(f[k]) })),
+    ].filter((e): e is { kind: 'Site visit' | 'Installation'; at: number } => e.at != null),
+    team: ['SALES PIC', 'LEADER', 'PIC SITE VISIT', 'PIC SUPERVISER'].flatMap((k) => users(f[k])),
   };
 }
 
