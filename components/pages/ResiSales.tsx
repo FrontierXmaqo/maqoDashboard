@@ -7,6 +7,8 @@ import { Kpi, LarkLink, SalesWarnings, kwp, rm, rmk } from './SalesBits';
 const STATUS_TONE: Record<string, 'g' | 'b' | 'a' | 'n' | 'r'> = { COMPLETED: 'g', 'IN PROGRESS': 'b', SCHEDULE: 'b', PENDING: 'a', KIV: 'a', 'NOT STARTED': 'n' };
 // Unknown stage names go last.
 const order = (s: string) => (RESI_STAGES.indexOf(s) + 1 || RESI_STAGES.length + 1) - 1;
+// One hue per stage, spread round the colour wheel so neighbouring stages differ; unknown stages grey.
+const stageColor = (s: string) => (order(s) < RESI_STAGES.length ? `hsl(${order(s) * 33} 70% 50%)` : 'var(--n-dot)');
 const pct = (a: number, b: number) => `${b ? Math.round((a / b) * 100) : 0}%`;
 
 export default function ResiSales({ data }: { data: SalesData<{ projects: ResiProject[]; sales: ResiSale[] }> }) {
@@ -21,6 +23,7 @@ export default function ResiSales({ data }: { data: SalesData<{ projects: ResiPr
   for (const r of projects) statuses.set(r.status ?? 'NOT SET', (statuses.get(r.status ?? 'NOT SET') ?? 0) + 1);
   const stages = new Map<string, number>();
   for (const r of projects.filter(resiOpen)) if (r.stage) stages.set(r.stage, (stages.get(r.stage) ?? 0) + 1);
+  const maxStage = Math.max(1, ...stages.values());
 
   return (
     <>
@@ -134,7 +137,13 @@ export default function ResiSales({ data }: { data: SalesData<{ projects: ResiPr
               <h3 style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Where ongoing projects are</h3>
               <div className="stack" style={{ gap: 6 }}>
                 {[...stages.entries()].sort((a, b) => order(a[0]) - order(b[0])).map(([s, n]) => (
-                  <div key={s} className="spread"><span>{order(s) < RESI_STAGES.length ? `${order(s) + 1}. ${s}` : s}</span><b className="num">{n}</b></div>
+                  <div key={s} className="stack" style={{ gap: 3 }}>
+                    <div className="spread">
+                      <span className="row" style={{ gap: 8 }}><span className="dot" style={{ background: stageColor(s), width: 10, height: 10 }} />{order(s) < RESI_STAGES.length ? `${order(s) + 1}. ${s}` : s}</span>
+                      <b className="num">{n}</b>
+                    </div>
+                    <span style={{ display: 'block', height: 6, borderRadius: 3, width: `${(n / maxStage) * 100}%`, background: stageColor(s) }} />
+                  </div>
                 ))}
               </div>
             </>
