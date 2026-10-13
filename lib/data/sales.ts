@@ -3,7 +3,7 @@
 
 import { READ_CACHE_SECONDS } from '../../config/app.ts';
 import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
-import { CI_BASE, CI_SE_LARK_URL, RESI_BASE, RESI_SALES_BASE, RESI_STAGES, type CiTarget, type SalesEvent, type ResiProject, type ResiSale, type SalesData } from '../sales-model.ts';
+import { CI_BASE, CI_LEAD_COLORS, CI_SE_LARK_URL, RESI_BASE, RESI_SALES_BASE, RESI_STAGES, type CiTarget, type SalesEvent, type ResiProject, type ResiSale, type SalesData } from '../sales-model.ts';
 import { cached } from './cache.ts';
 import { datetime, display, num, single, users } from './parse.ts';
 import { fixturesEnabled } from './fixtures.ts';
@@ -105,6 +105,20 @@ export function closedCounts(recs: LarkRecord[]): Map<string, number> {
     if (id) m.set(id, (m.get(id) ?? 0) + 1);
   }
   return m;
+}
+
+/** C&I cases per lead status, in CI_LEAD_COLORS order; other statuses after. */
+export function leadCounts(recs: LarkRecord[]): [string, number][] {
+  const m = new Map<string, number>(Object.keys(CI_LEAD_COLORS).map((k) => [k, 0]));
+  for (const r of recs) {
+    const s = (single(r.fields?.['Client Status']) ?? '').trim();
+    if (s) m.set(s, (m.get(s) ?? 0) + 1);
+  }
+  return [...m].filter(([, n]) => n > 0);
+}
+
+export async function loadCiLeads(): Promise<[string, number][]> {
+  return leadCounts(await read(CI_BASE, CI_SE).catch(() => []));
 }
 
 export async function loadCi(): Promise<SalesData<CiTarget[]>> {

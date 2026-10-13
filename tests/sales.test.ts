@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { closedCounts, mapCiEvents, mapResi, mapResiSale, mapTarget } from '../lib/data/sales.ts';
+import { closedCounts, leadCounts, mapCiEvents, mapResi, mapResiSale, mapTarget } from '../lib/data/sales.ts';
 import { financialYear, resiByPerson, resiEvents, resiSalesStats, salesSummary } from '../lib/sales-model.ts';
 
 const amy = [{ id: 'ou_a', name: 'Amy' }];
@@ -68,4 +68,5 @@ test('closed deals are counted per Sales PIC, whatever the status spacing', () =
   const m = closedCounts([c('Closed Sales'), c('Closed Sales '), c('Hot Lead'), c('Closed Sales', ben)]);
   assert.equal(m.get('ou_a'), 2);
   assert.equal(m.get('ou_b'), 1);
+  assert.deepEqual(leadCounts([c('Hot Lead '), c('Closed Sales'), c('Hot Lead'), c('Odd')]), [['Closed Sales', 1], ['Hot Lead', 2], ['Odd', 1]]);
 });

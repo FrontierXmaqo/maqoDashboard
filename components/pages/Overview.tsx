@@ -9,7 +9,7 @@ import { Avatar, Bar, DeptChips, Icon, StagePill, Legend, LoadCell, Pill, Seg, S
 import { dayToIso, fd, fdy, isoToDay, monthRange, people, plural, weekRange, weekday } from '../../lib/dates';
 import { STAGES, STATUS, personInDept, taskInDept, type Model, type PersonX, type StatusKey, type Tone } from '../../lib/model';
 import type { Stage } from '../../lib/types';
-import { RESI_MONTHLY_TARGET, yearPace, type SalesSummary } from '../../lib/sales-model';
+import { CI_LEAD_COLORS, RESI_MONTHLY_TARGET, resiStageColor, yearPace, type SalesSummary } from '../../lib/sales-model';
 import { rmk, kwp } from './SalesBits';
 
 type Att = { sev: number; tone: Tone; tag: string; title: string; meta: string; ref: ['task' | 'emp', string] };
@@ -286,12 +286,38 @@ export default function Overview({ sales }: { sales: SalesSummary | null }) {
   return <TeamOverview />;
 }
 
-function DeptCard({ href, title, big, bigL, subs, flag }: { href: string; title: string; big: string | number; bigL: string; subs: [string | number, string][]; flag?: ReactNode }) {
+/** Task progress colours, the same set the Calendar uses. */
+const TASK_COLORS: Record<Stage, string> = { todo: '#4E7FE0', ongoing: '#8A5CD6', stalled: '#E8892B', done: '#3BAA5C', notset: 'var(--n-dot)' };
+
+/** One bar split by progress, each part its own colour, with a legend under it. */
+function ProgressSplit({ parts }: { parts: [string, number, string][] }) {
+  const shown = parts.filter(([, n]) => n > 0);
+  if (!shown.length) return null;
+  return (
+    <span className="stack" style={{ gap: 6 }}>
+      <span style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2 }} aria-hidden="true">
+        {shown.map(([l, n, c]) => <span key={l} title={`${l}: ${n}`} style={{ flex: n, background: c }} />)}
+      </span>
+      <span style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '3px 10px', fontSize: 12 }}>
+        {shown.map(([l, n, c]) => (
+          <span key={l} className="row" style={{ gap: 6, minWidth: 0 }}>
+            <span className="dot" style={{ background: c }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l}</span>
+            <b className="num" style={{ marginLeft: 'auto' }}>{n}</b>
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
+function DeptCard({ href, title, big, bigL, subs, flag, children }: { href: string; title: string; big: string | number; bigL: string; subs: [string | number, string][]; flag?: ReactNode; children?: ReactNode }) {
   return (
     <Link className="dcard" href={href}>
       <span className="spread"><b>{title}</b>{flag}</span>
       <span><span className="big num" style={{ display: 'block' }}>{big}</span><span className="muted">{bigL}</span></span>
       <span className="sub">{subs.map(([v, l]) => <span key={l}><b className="num">{v}</b><span className="muted">{l}</span></span>)}</span>
+      {children}
     </Link>
   );
 }
@@ -402,7 +428,9 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
     const projects = new Set(open.map((t) => t.projectNames).filter((n) => n !== 'No project')).size;
     return (
       <DeptCard key={d} href={d === 'O&M' ? '/om' : '/engineering'} title={d} big={open.length} bigL="tasks in progress"
-        subs={[[projects, 'projects'], [M.sPeople.filter((p) => personInDept(p, d)).length, 'people']]} />
+        subs={[[projects, 'projects'], [M.sPeople.filter((p) => personInDept(p, d)).length, 'people']]}>
+        <ProgressSplit parts={STAGES.map((st) => [st.label, M.sTasks.filter((t) => t.stage === st.k && taskInDept(t, d)).length, TASK_COLORS[st.k]])} />
+      </DeptCard>
     );
   };
   const rs = resi?.sales;
@@ -452,13 +480,17 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
 
       <div className="dgrid">
         {resi ? (
-          <DeptCard href="/residential" title="Residential sales" big={rmk(resi.sales.fyRm)} bigL={`${resi.sales.fyLabel}, ${plural(resi.sales.fyCases, 'case')}, ${kwp(resi.sales.fyKwp)}`} subs={[[rmk(resi.sales.monthRm), `this month (target ${rmk(RESI_MONTHLY_TARGET)})`], [resi.ongoing, 'projects ongoing']]} />
+          <DeptCard href="/residential" title="Residential sales" big={rmk(resi.sales.fyRm)} bigL={`${resi.sales.fyLabel}, ${plural(resi.sales.fyCases, 'case')}, ${kwp(resi.sales.fyKwp)}`} subs={[[rmk(resi.sales.monthRm), `this month (target ${rmk(RESI_MONTHLY_TARGET)})`], [resi.ongoing, 'projects ongoing']]}>
+            <ProgressSplit parts={resi.stages.map(([st, n]) => [st, n, resiStageColor(st)])} />
+          </DeptCard>
         ) : (
           <div className="dcard off"><b>Residential sales</b><p className="muted">No projects came back from Lark.</p></div>
         )}
         {ci ? (
           <DeptCard href="/ci" title="C&I sales" big={rmk(ci.closedRm)} bigL={`sales achieved, ${plural(ci.closedN, 'deal')}, ${kwp(ci.closedKwp)}`}
-            subs={[[ci.target ? `${Math.round((ci.closedRm / ci.target) * 100)}%` : '—', 'of target'], [rmk(ci.hotRm), 'hot leads']]} />
+            subs={[[ci.target ? `${Math.round((ci.closedRm / ci.target) * 100)}%` : '—', 'of target'], [rmk(ci.hotRm), 'hot leads']]}>
+            <ProgressSplit parts={(sales.ciLeads ?? []).map(([st, n]) => [st, n, CI_LEAD_COLORS[st] ?? '#8A5CD6'])} />
+          </DeptCard>
         ) : (
           <div className="dcard off"><b>C&amp;I sales</b><p className="muted">No cases came back from Lark.</p></div>
         )}
