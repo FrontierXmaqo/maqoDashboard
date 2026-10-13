@@ -5,9 +5,11 @@ import { useData } from '../DataProvider';
 import { DeptEmpFilter, Icon, TaskTable, filterTasks } from '../ui';
 import { dayToIso, fdy, isoToDay, klDay, MONL, plural } from '../../lib/dates';
 import { prioMeta, type TaskX } from '../../lib/model';
-import type { SalesEvent } from '../../lib/sales-model';
+import { EVENT_COLORS, type SalesEvent } from '../../lib/sales-model';
 import { LarkLink } from './SalesBits';
 
+// Lark-style chip: coloured left edge on a light tint of the same colour.
+const evStyle = (c: string) => ({ borderLeft: `3px solid ${c}`, background: `color-mix(in srgb, ${c} 16%, var(--surface))`, color: 'var(--text)' });
 const evTone = (t: TaskX) => (t.overdue ? 'r' : t.done ? 'g' : t.stage === 'stalled' ? 'a' : 'b');
 
 export default function Calendar({ sales = [] }: { sales?: SalesEvent[] }) {
@@ -42,14 +44,14 @@ export default function Calendar({ sales = [] }: { sales?: SalesEvent[] }) {
     const list = (byDay.get(d) ?? []).slice().sort((a, b) => Number(a.done) - Number(b.done) || prioMeta(a.priority).rank - prioMeta(b.priority).rank);
     const s = dayToIso(d);
     const items = [
-      ...(salesByDay.get(d) ?? []).map((e) => ({ id: e.key, title: `${e.dept === 'C&I' ? 'C&I ' : ''}${e.short}: ${e.client}`, tone: 'n' })),
-      ...list.map((t) => ({ id: t.id, title: t.title, tone: evTone(t) })),
+      ...(salesByDay.get(d) ?? []).map((e) => ({ id: e.key, title: `${e.kind} - ${e.client}`, tone: '', color: EVENT_COLORS[e.kind] })),
+      ...list.map((t) => ({ id: t.id, title: t.title, tone: evTone(t), color: undefined })),
     ];
     const out = d < first || d > last;
     cells.push(
       <button key={d} type="button" className={`day${out ? ' out' : ''}${d === M.t0 ? ' today' : ''}`} aria-pressed={sel === s} onClick={() => setSel(s)} aria-label={`${fdy(d)}, ${plural(items.length, 'item')}`}>
         <span className="dnum num">{+s.slice(8)}</span>
-        {items.slice(0, 3).map((t) => <span key={t.id} className={`ev t-${t.tone}`}>{t.title}</span>)}
+        {items.slice(0, 3).map((t) => <span key={t.id} className={t.color ? 'ev' : `ev t-${t.tone}`} style={t.color ? evStyle(t.color) : undefined}>{t.title}</span>)}
         {items.length > 3 && <span className="muted" style={{ fontSize: 12 }}>+{items.length - 3} more</span>}
       </button>,
     );
@@ -74,7 +76,7 @@ export default function Calendar({ sales = [] }: { sales?: SalesEvent[] }) {
         <span className="row" style={{ gap: 6 }}><span className="dot d-a" />Stalled</span>
         <span className="row" style={{ gap: 6 }}><span className="dot d-r" />Overdue</span>
         <span className="row" style={{ gap: 6 }}><span className="dot d-g" />Completed</span>
-        {sales.length > 0 && <span className="row" style={{ gap: 6 }}><span className="dot d-n" />Residential and C&amp;I (SV = site visit)</span>}
+        {sales.length > 0 && Object.entries(EVENT_COLORS).map(([k, c]) => <span key={k} className="row" style={{ gap: 6 }}><span className="dot" style={{ background: c }} />{k}</span>)}
         {noDue > 0 && <span className="muted">{plural(noDue, 'open task')} with no deadline set are not shown.</span>}
       </div>
       <div className="cal">
@@ -98,7 +100,7 @@ export default function Calendar({ sales = [] }: { sales?: SalesEvent[] }) {
                 {daySales.map((e) => (
                   <tr key={e.key}>
                     <td>{e.dept}</td>
-                    <td>{e.kind}</td>
+                    <td><span className="row" style={{ gap: 6 }}><span className="dot" style={{ background: EVENT_COLORS[e.kind] }} />{e.kind}</span></td>
                     <td>{e.client || '—'}</td>
                     <td>{e.detail || '—'}</td>
                     <td>{[...new Set(e.team.map((x) => x.name))].join(', ') || '—'}</td>

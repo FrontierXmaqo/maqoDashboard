@@ -24,6 +24,15 @@ function read(base: string, table: string): Promise<LarkRecord[]> {
 /** Field names differ in case between the yearly tables; first non-empty match wins. */
 const pick = (f: Record<string, unknown>, ...names: string[]) => names.map((n) => f[n]).find((v) => v != null && v !== '');
 
+/** Date columns the team's Project Task Calendar in Lark shows, and the label it gives each. */
+const RESI_EVENT_FIELDS: [string, string][] = [
+  ['SITE VISIT DATE', 'SITE VISIT 1'],
+  ['SITE VISIT 2ND', 'SITE VISIT 2'],
+  ['STATUS NEM', 'STATUS NEM'],
+  ['EXECUTED DATE INSTALLATION ( DAY 1)', 'INSTALLATION DAY 1'],
+  ['EXECUTED DATE INSTALLATION (DAY 2)', 'INSTALLATION DAY 2'],
+];
+
 export function mapResi(rec: LarkRecord, fixedYear: number | null): ResiProject {
   const f = rec.fields ?? {};
   const installedAt = datetime(pick(f, 'EXECUTED DATE INSTALLATION ( DAY 1)', 'Executed Date Installation'));
@@ -42,10 +51,10 @@ export function mapResi(rec: LarkRecord, fixedYear: number | null): ResiProject 
     year: fixedYear ?? yearOf(installedAt),
     createdAt: rec.created_time ?? null,
     installedAt,
-    events: [
-      ...['SITE VISIT DATE', 'SITE VISIT 2ND'].map((k) => ({ kind: 'Site visit' as const, at: datetime(f[k]) })),
-      ...['EXECUTED DATE INSTALLATION ( DAY 1)', 'EXECUTED DATE INSTALLATION (DAY 2)'].map((k) => ({ kind: 'Installation' as const, at: datetime(f[k]) })),
-    ].filter((e): e is { kind: 'Site visit' | 'Installation'; at: number } => e.at != null),
+    events: RESI_EVENT_FIELDS.flatMap(([k, kind]) => {
+      const at = datetime(f[k]);
+      return at == null ? [] : [{ kind, at }];
+    }),
     team: ['SALES PIC', 'LEADER', 'PIC SITE VISIT', 'PIC SUPERVISER'].flatMap((k) => users(f[k])),
   };
 }
@@ -122,10 +131,10 @@ export function mapCiEvents(rec: LarkRecord): SalesEvent[] {
     team: ['Sales PIC', 'SE', 'Maqo Attendess', 'Site Visit By', 'Support'].flatMap((k) => users(f[k])),
     link: CI_SE_LARK_URL,
   };
-  const dates: [string, string, string][] = [['First Appointment Date & Start Time', 'First meeting', 'Meeting'], ['Site Visit Date', 'Site visit', 'SV']];
-  return dates.flatMap(([k, kind, short], i) => {
+  const dates: [string, string][] = [['First Appointment Date & Start Time', 'C&I MEETING'], ['Site Visit Date', 'C&I SITE VISIT']];
+  return dates.flatMap(([k, kind], i) => {
     const at = datetime(f[k]);
-    return at == null ? [] : [{ ...base, key: `${rec.record_id}-${i}`, kind, short, at }];
+    return at == null ? [] : [{ ...base, key: `${rec.record_id}-${i}`, kind, at }];
   });
 }
 

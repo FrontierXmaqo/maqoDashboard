@@ -110,7 +110,7 @@ export type ResiProject = {
   createdAt: number | null;
   installedAt: number | null;
   /** Site visit and installation days, the dates the team plans in its Lark calendar. */
-  events: { kind: 'Site visit' | 'Installation'; at: number }[];
+  events: { kind: string; at: number }[];
   /** Sales PIC, leader, site visit PIC and supervisor: who an event belongs to on the Calendar filter. */
   team: PersonRef[];
 };
@@ -207,7 +207,18 @@ export function salesSummary(resi: ResiProject[], resiSales: ResiSale[], targets
 }
 
 /** A Residential or C&I date shown on the company Calendar (CEO only). */
-export type SalesEvent = { key: string; dept: 'Residential' | 'C&I'; kind: string; short: string; at: number; client: string; detail: string; team: PersonRef[]; link: string };
+/** Calendar colour per event kind, matching the team's Project Task Calendar in Lark. */
+export const EVENT_COLORS: Record<string, string> = {
+  'SITE VISIT 1': '#4E7FE0',
+  'SITE VISIT 2': '#8A5CD6',
+  'STATUS NEM': '#E8892B',
+  'INSTALLATION DAY 1': '#3BAA5C',
+  'INSTALLATION DAY 2': '#E05656',
+  'C&I MEETING': '#1F9FA8',
+  'C&I SITE VISIT': '#C2459A',
+};
+
+export type SalesEvent = { key: string; dept: 'Residential' | 'C&I'; kind: string; at: number; client: string; detail: string; team: PersonRef[]; link: string };
 
 export function resiEvents(list: ResiProject[]): SalesEvent[] {
   return list
@@ -216,7 +227,6 @@ export function resiEvents(list: ResiProject[]): SalesEvent[] {
       key: `${p.id}-${i}`,
       dept: 'Residential' as const,
       kind: e.kind,
-      short: e.kind === 'Site visit' ? 'SV' : 'Install',
       at: e.at,
       client: p.client || p.code,
       detail: [p.code, p.kwp != null ? `${p.kwp} kWp` : '', p.stage].filter(Boolean).join(' · '),
