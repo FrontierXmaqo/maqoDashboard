@@ -108,6 +108,10 @@ export type ResiProject = {
   year: number | null;
   createdAt: number | null;
   installedAt: number | null;
+  /** Site visit and installation days, the dates the team plans in its Lark calendar. */
+  events: { kind: 'Site visit' | 'Installation'; at: number }[];
+  /** Sales PIC, leader, site visit PIC and supervisor: who an event belongs to on the Calendar filter. */
+  team: PersonRef[];
 };
 
 /** One row of the C&I Target table: the team's own numbers per sales consultant (SC). */

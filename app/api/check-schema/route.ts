@@ -3,7 +3,6 @@
 
 import { runSchemaCheck } from '../../../lib/schema/run.ts';
 import { listFields, listTables } from '../../../lib/lark/bitable.ts';
-import { larkListAll, larkRequest } from '../../../lib/lark/client.ts';
 import { fieldTypeName } from '../../../config/schema.ts';
 
 export const dynamic = 'force-dynamic';
@@ -31,19 +30,6 @@ async function salesBaseLines(): Promise<string[]> {
       lines.push(`  ✗ Cannot read: ${e instanceof Error ? e.message : String(e)}`);
       lines.push('  Add the dashboard app to this Base (Base ⋯ menu > add app / collaborator) with read access.');
     }
-  }
-  // shortcut: temporary look at the Residential calendar views, remove once mapped.
-  try {
-    const app = 'Ec88b000TaIsdGsEznLl8i2dgve';
-    for (const t of await listTables(app)) {
-      const views = await larkListAll<{ view_id: string; view_name: string; view_type: string }>(`/bitable/v1/apps/${app}/tables/${t.table_id}/views`);
-      lines.push(`\n--- views ${t.name} (${t.table_id}): ` + views.map((v) => `${v.view_name}[${v.view_type}] ${v.view_id}`).join(' | '));
-      for (const v of views.filter((x) => x.view_type !== 'grid' && x.view_type !== 'form')) {
-        lines.push('    ' + JSON.stringify(await larkRequest('GET', `/bitable/v1/apps/${app}/tables/${t.table_id}/views/${v.view_id}`)).slice(0, 1500));
-      }
-    }
-  } catch (e) {
-    lines.push(`  view check failed: ${e instanceof Error ? e.message : String(e)}`);
   }
   return lines;
 }
