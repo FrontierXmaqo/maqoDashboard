@@ -6,11 +6,16 @@ import { DeptEmpFilter, Icon, TaskTable, filterTasks } from '../ui';
 import { dayToIso, fdy, isoToDay, klDay, MONL, plural } from '../../lib/dates';
 import { prioMeta, type TaskX } from '../../lib/model';
 import { EVENT_COLORS, type SalesEvent } from '../../lib/sales-model';
+import { DEPT_COLORS } from '../../config/departments';
 import { LarkLink } from './SalesBits';
 
 // Lark-style chip: coloured left edge on a light tint of the same colour.
 const evStyle = (c: string) => ({ borderLeft: `3px solid ${c}`, background: `color-mix(in srgb, ${c} 16%, var(--surface))`, color: 'var(--text)' });
-const evTone = (t: TaskX) => (t.overdue ? 'r' : t.done ? 'g' : t.stage === 'stalled' ? 'a' : 'b');
+// Inside one department, colour shows progress; on "All", colour shows the department.
+const TASK_STEPS: [string, string][] = [['To do', '#4E7FE0'], ['Ongoing', '#8A5CD6'], ['Stalled', '#E8892B'], ['Overdue', '#E05656'], ['Completed', '#3BAA5C']];
+const taskStep = (t: TaskX) => (t.done ? 'Completed' : t.overdue ? 'Overdue' : t.stage === 'stalled' ? 'Stalled' : t.stage === 'ongoing' ? 'Ongoing' : 'To do');
+const TASK_STEP_COLOR = Object.fromEntries(TASK_STEPS);
+const deptColor = (d: string | undefined) => (DEPT_COLORS as Record<string, string>)[d ?? ''] ?? '#9AA1A9';
 
 export default function Calendar({ sales = [] }: { sales?: SalesEvent[] }) {
   const { M, canCreate, openNew } = useData();
@@ -39,19 +44,20 @@ export default function Calendar({ sales = [] }: { sales?: SalesEvent[] }) {
     setMonth(ym);
     setSel(`${ym}-01`);
   };
+  const all = dept === 'All';
   const cells = [];
   for (let d = start; d <= end; d++) {
     const list = (byDay.get(d) ?? []).slice().sort((a, b) => Number(a.done) - Number(b.done) || prioMeta(a.priority).rank - prioMeta(b.priority).rank);
     const s = dayToIso(d);
     const items = [
-      ...(salesByDay.get(d) ?? []).map((e) => ({ id: e.key, title: `${e.kind} - ${e.client}`, tone: '', color: EVENT_COLORS[e.kind] })),
-      ...list.map((t) => ({ id: t.id, title: t.title, tone: evTone(t), color: undefined })),
+      ...(salesByDay.get(d) ?? []).map((e) => ({ id: e.key, title: `${e.kind} - ${e.client}`, color: all ? deptColor(e.dept) : EVENT_COLORS[e.kind] })),
+      ...list.map((t) => ({ id: t.id, title: t.title, color: all ? deptColor(t.departments[0]) : TASK_STEP_COLOR[taskStep(t)] })),
     ];
     const out = d < first || d > last;
     cells.push(
       <button key={d} type="button" className={`day${out ? ' out' : ''}${d === M.t0 ? ' today' : ''}`} aria-pressed={sel === s} onClick={() => setSel(s)} aria-label={`${fdy(d)}, ${plural(items.length, 'item')}`}>
         <span className="dnum num">{+s.slice(8)}</span>
-        {items.slice(0, 3).map((t) => <span key={t.id} className={t.color ? 'ev' : `ev t-${t.tone}`} style={t.color ? evStyle(t.color) : undefined}>{t.title}</span>)}
+        {items.slice(0, 3).map((t) => <span key={t.id} className="ev" style={evStyle(t.color)}>{t.title}</span>)}
         {items.length > 3 && <span className="muted" style={{ fontSize: 12 }}>+{items.length - 3} more</span>}
       </button>,
     );
@@ -70,13 +76,13 @@ export default function Calendar({ sales = [] }: { sales?: SalesEvent[] }) {
           <button type="button" className="btn" onClick={() => { setMonth(today.slice(0, 7)); setSel(today); }}>Today</button>
         </div>
       </div>
-      <DeptEmpFilter people={M.sPeople} depts={M.depts} dept={dept} emp={emp} onDept={setDept} onEmp={setEmp} />
+      <DeptEmpFilter people={M.sPeople} depts={M.depts} dept={dept} emp={emp} onDept={setDept} onEmp={setEmp} colors={DEPT_COLORS} />
       <div className="row" style={{ gap: 14 }}>
-        <span className="row" style={{ gap: 6 }}><span className="dot d-b" />To do or ongoing</span>
-        <span className="row" style={{ gap: 6 }}><span className="dot d-a" />Stalled</span>
-        <span className="row" style={{ gap: 6 }}><span className="dot d-r" />Overdue</span>
-        <span className="row" style={{ gap: 6 }}><span className="dot d-g" />Completed</span>
-        {sales.length > 0 && Object.entries(EVENT_COLORS).map(([k, c]) => <span key={k} className="row" style={{ gap: 6 }}><span className="dot" style={{ background: c }} />{k}</span>)}
+        <b>{all ? 'Colour = department' : `${dept}: colour = progress`}</b>
+        {(all
+          ? M.depts.map((d) => [d, deptColor(d)] as [string, string])
+          : [...TASK_STEPS, ...Object.entries(EVENT_COLORS).filter(([k]) => sales.some((e) => e.dept === dept && e.kind === k))]
+        ).map(([k, c]) => <span key={k} className="row" style={{ gap: 6 }}><span className="dot" style={{ background: c }} />{k}</span>)}
         {noDue > 0 && <span className="muted">{plural(noDue, 'open task')} with no deadline set are not shown.</span>}
       </div>
       <div className="cal">
