@@ -1,14 +1,12 @@
 'use client';
 
 import { Avatar, Bar, Pill } from '../ui';
-import { RESI_DASHBOARD_URL, RESI_LARK_URL, RESI_MONTHLY_TARGET, RESI_SALES_LARK_URL, RESI_STAGES, resiByPerson, resiOpen, resiSalesStats, type ResiProject, type ResiSale, type SalesData } from '../../lib/sales-model';
+import { RESI_DASHBOARD_URL, RESI_LARK_URL, RESI_MONTHLY_TARGET, RESI_SALES_LARK_URL, RESI_STAGES, resiByPerson, resiStageColor, resiStageIndex, resiOpen, resiSalesStats, type ResiProject, type ResiSale, type SalesData } from '../../lib/sales-model';
 import { Kpi, LarkLink, SalesWarnings, kwp, rm, rmk } from './SalesBits';
 
 const STATUS_TONE: Record<string, 'g' | 'b' | 'a' | 'n' | 'r'> = { COMPLETED: 'g', 'IN PROGRESS': 'b', SCHEDULE: 'b', PENDING: 'a', KIV: 'a', 'NOT STARTED': 'n' };
-// Unknown stage names go last.
-const order = (s: string) => (RESI_STAGES.indexOf(s) + 1 || RESI_STAGES.length + 1) - 1;
-// One hue per stage, spread round the colour wheel so neighbouring stages differ; unknown stages grey.
-const stageColor = (s: string) => (order(s) < RESI_STAGES.length ? `hsl(${order(s) * 33} 70% 50%)` : 'var(--n-dot)');
+const order = resiStageIndex;
+const stageColor = resiStageColor;
 const pct = (a: number, b: number) => `${b ? Math.round((a / b) * 100) : 0}%`;
 
 export default function ResiSales({ data }: { data: SalesData<{ projects: ResiProject[]; sales: ResiSale[] }> }) {

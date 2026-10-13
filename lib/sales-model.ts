@@ -22,6 +22,13 @@ const FY_START_MONTH = 8; // September, 0-based
 /** Residential FLOW stages in order; the 2026 table's Stage No. formula numbers them 1 to 11. */
 export const RESI_STAGES = ['Date Site Visit (Confirm Date)', 'Assign PIC', 'Submit Report', 'Review By Leader', 'Design & BQ', 'Approval Design & BQ', 'Update NEM/ATAP Status', 'Installation Date', 'Assign Supervisor', 'Complete Project', 'Done'];
 
+/** Colour per Residential stage, one hue each round the colour wheel; unknown stages grey. */
+export const resiStageIndex = (s: string) => (RESI_STAGES.indexOf(s) + 1 || RESI_STAGES.length + 1) - 1;
+export const resiStageColor = (s: string) => (resiStageIndex(s) < RESI_STAGES.length ? `hsl(${resiStageIndex(s) * 33} 70% 50%)` : 'var(--n-dot)');
+
+/** C&I lead statuses in pipeline order, coloured like the Calendar. */
+export const CI_LEAD_COLORS: Record<string, string> = { 'Closed Sales': '#3BAA5C', 'Hot Lead': '#E05656', 'Warm Lead': '#E8892B', 'Cold Lead': '#4E7FE0', 'Lost Deal': 'var(--n-dot)' };
+
 /** One signed residential case from the Sales Declaration table. */
 export type ResiSale = { id: string; sales: PersonRef[]; price: number; kwp: number | null; at: number | null };
 
@@ -160,7 +167,9 @@ export const resiOpen = (r: ResiProject) => OPEN_RESI(r.status);
 
 /** The few numbers the CEO overview cards need, so the full rows stay off that page. */
 export type SalesSummary = {
-  resi: { year: number; kwp: number; projects: number; ongoing: number; completed: number; sales: ResiSalesStats } | null;
+  resi: { year: number; kwp: number; projects: number; ongoing: number; completed: number; sales: ResiSalesStats; stages: [string, number][] } | null;
+  /** C&I cases per lead status from SE 2026, pipeline order. */
+  ciLeads?: [string, number][];
   ci: { closedRm: number; closedKwp: number; closedN: number; target: number; hotRm: number; pipelineRm: number } | null;
   /** Salespeople with their latest-year numbers, so the CEO sees them even when the org chart can't. */
   people: { p: PersonRef; dept: 'Residential' | 'C&I'; projects: number; kwp: number; closedRm: number; hotRm: number }[];
@@ -195,6 +204,7 @@ export function salesSummary(resi: ResiProject[], resiSales: ResiSale[], targets
           ongoing: rl.filter(resiOpen).length,
           completed: rl.filter((r) => r.status === 'COMPLETED').length,
           sales: rs,
+          stages: [...rl.filter(resiOpen).reduce((m, r) => (r.stage ? m.set(r.stage, (m.get(r.stage) ?? 0) + 1) : m), new Map<string, number>())].sort((a, b) => resiStageIndex(a[0]) - resiStageIndex(b[0])),
         }
       : null,
     people: [
