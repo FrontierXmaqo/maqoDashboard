@@ -15,6 +15,19 @@ export const DEPARTMENTS = [
 
 export type Department = (typeof DEPARTMENTS)[number];
 
+/** One colour per department, used on the Calendar's "All" view. */
+export const DEPT_COLORS: Record<Department, string> = {
+  'CEO Office': '#64748B',
+  Residential: '#E8892B',
+  'C&I': '#4E7FE0',
+  Marketing: '#D2457F',
+  'O&M': '#12998F',
+  Engineering: '#8A5CD6',
+  Finance: '#3BAA5C',
+  HR: '#C9A227',
+  'Procurement/Warehouse & Logistics': '#8B6B3D',
+};
+
 /**
  * Exact Lark names (org-chart department name, or a task's Department option) -> app
  * department. Checked before the keyword rules below. Add entries here when a name maps

@@ -167,12 +167,13 @@ export function Seg<T extends string>({ label, value, options, onChange }: { lab
   );
 }
 
-export function DeptChips({ value, onChange, depts }: { value: string; onChange: (v: string) => void; depts: string[] }) {
+export function DeptChips({ value, onChange, depts, colors }: { value: string; onChange: (v: string) => void; depts: string[]; colors?: Record<string, string> }) {
   if (depts.length < 2) return null;
   return (
     <div className="chips" role="group" aria-label="Department">
       {['All', ...depts].map((d) => (
         <button key={d} type="button" className="chip sq" aria-pressed={value === d} onClick={() => onChange(d)}>
+          {colors?.[d] && <span className="dot" style={{ background: colors[d] }} />}
           {d}
         </button>
       ))}
@@ -181,11 +182,11 @@ export function DeptChips({ value, onChange, depts }: { value: string; onChange:
 }
 
 /** Department chips, then an employee picker limited to the chosen department. */
-export function DeptEmpFilter({ people, depts, dept, emp, onDept, onEmp }: { people: PersonX[]; depts: string[]; dept: string; emp: string; onDept: (d: string) => void; onEmp: (id: string) => void }) {
+export function DeptEmpFilter({ people, depts, dept, emp, onDept, onEmp, colors }: { people: PersonX[]; depts: string[]; dept: string; emp: string; onDept: (d: string) => void; onEmp: (id: string) => void; colors?: Record<string, string> }) {
   const inDept = people.filter((p) => dept === 'All' || p.deptLabel === dept).sort((a, b) => a.name.localeCompare(b.name));
   return (
     <div className="row" style={{ justifyContent: 'space-between' }}>
-      <DeptChips value={dept} depts={depts} onChange={(d) => { onDept(d); onEmp('all'); }} />
+      <DeptChips value={dept} depts={depts} colors={colors} onChange={(d) => { onDept(d); onEmp('all'); }} />
       <Select id="emp-filter" label="Employee" value={emp} onChange={onEmp} options={[['all', dept === 'All' ? 'Everyone' : `Everyone in ${dept}`], ...inDept.map((p) => [p.openId, p.name] as [string, string])]} />
     </div>
   );
