@@ -1,14 +1,15 @@
 import { Suspense } from 'react';
 import Calendar from '../../../components/pages/Calendar';
-import { loadResi } from '../../../lib/data/sales';
+import { loadCiEvents, loadResi } from '../../../lib/data/sales';
 import { viewerIsCeo } from '../../../lib/auth/ceo';
+import { resiEvents } from '../../../lib/sales-model';
 
 export default async function Page() {
-  // Residential projects sit in a CEO-only Base, so only the CEO sees their site visits and installations.
-  const resi = (await viewerIsCeo()) ? (await loadResi()).rows.projects : [];
+  // Residential and C&I sit in CEO-only Bases, so only the CEO sees their site visits, installations and meetings.
+  const sales = (await viewerIsCeo()) ? await Promise.all([loadResi(), loadCiEvents()]).then(([r, ci]) => [...resiEvents(r.rows.projects), ...ci]) : [];
   return (
     <Suspense>
-      <Calendar resi={resi} />
+      <Calendar sales={sales} />
     </Suspense>
   );
 }

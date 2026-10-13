@@ -7,6 +7,7 @@ export const CI_BASE = 'YLOSbdnx6a53O9sVwCflo8adgad';
 export const RESI_LARK_URL = `https://bsgyt70achks.sg.larksuite.com/base/${RESI_BASE}?table=tblMhiNP4OO3h3oA&view=vewuXiMDmU`;
 export const CI_LARK_URL = `https://bsgyt70achks.sg.larksuite.com/base/${CI_BASE}?table=tbliUv5oMV1AVWCS&view=vewh2hE6ug`;
 
+export const CI_SE_LARK_URL = `https://bsgyt70achks.sg.larksuite.com/base/${CI_BASE}?table=tblpBSsofNilaC3G`;
 export const RESI_DASHBOARD_URL = `https://bsgyt70achks.sg.larksuite.com/base/${RESI_BASE}?table=blk3AnnvgKEkruI9`;
 export const RESI_SALES_BASE = 'Hp9sbVJg8aHPIZs4U2FlpCMMgpd';
 export const RESI_SALES_LARK_URL = `https://bsgyt70achks.sg.larksuite.com/base/${RESI_SALES_BASE}?table=tblDTh0lmtTgrwH1`;
@@ -203,4 +204,23 @@ export function salesSummary(resi: ResiProject[], resiSales: ResiSale[], targets
     ci: ci.length ? { closedRm, closedKwp: sum((t) => t.closedKwp), closedN: sum((t) => t.closedN), target, hotRm: sum((t) => t.hotRm), pipelineRm: sum((t) => t.pipelineRm) } : null,
     warnings,
   };
+}
+
+/** A Residential or C&I date shown on the company Calendar (CEO only). */
+export type SalesEvent = { key: string; dept: 'Residential' | 'C&I'; kind: string; short: string; at: number; client: string; detail: string; team: PersonRef[]; link: string };
+
+export function resiEvents(list: ResiProject[]): SalesEvent[] {
+  return list
+    .filter((p) => !p.status?.startsWith('CANCEL'))
+    .flatMap((p) => p.events.map((e, i) => ({
+      key: `${p.id}-${i}`,
+      dept: 'Residential' as const,
+      kind: e.kind,
+      short: e.kind === 'Site visit' ? 'SV' : 'Install',
+      at: e.at,
+      client: p.client || p.code,
+      detail: [p.code, p.kwp != null ? `${p.kwp} kWp` : '', p.stage].filter(Boolean).join(' · '),
+      team: p.team,
+      link: RESI_LARK_URL,
+    })));
 }

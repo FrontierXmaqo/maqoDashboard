@@ -5,14 +5,12 @@ import { useData } from '../DataProvider';
 import { DeptEmpFilter, Icon, TaskTable, filterTasks } from '../ui';
 import { dayToIso, fdy, isoToDay, klDay, MONL, plural } from '../../lib/dates';
 import { prioMeta, type TaskX } from '../../lib/model';
-import { RESI_LARK_URL, type ResiProject } from '../../lib/sales-model';
+import type { SalesEvent } from '../../lib/sales-model';
 import { LarkLink } from './SalesBits';
-
-type ResiEv = { key: string; kind: string; p: ResiProject };
 
 const evTone = (t: TaskX) => (t.overdue ? 'r' : t.done ? 'g' : t.stage === 'stalled' ? 'a' : 'b');
 
-export default function Calendar({ resi = [] }: { resi?: ResiProject[] }) {
+export default function Calendar({ sales = [] }: { sales?: SalesEvent[] }) {
   const { M, canCreate, openNew } = useData();
   const today = dayToIso(M.t0);
   const [month, setMonth] = useState(today.slice(0, 7));
@@ -27,15 +25,11 @@ export default function Calendar({ resi = [] }: { resi?: ResiProject[] }) {
   const end = last + (6 - ((new Date(last * 864e5).getUTCDay() + 6) % 7));
   const byDay = new Map<number, TaskX[]>();
   for (const t of tasks) if (Number.isFinite(t.dueDay)) byDay.set(t.dueDay, [...(byDay.get(t.dueDay) ?? []), t]);
-  const resiByDay = new Map<number, ResiEv[]>();
-  if (dept === 'All' || dept === 'Residential') {
-    for (const p of resi) {
-      if (p.status?.startsWith('CANCEL') || (emp !== 'all' && !p.team.some((x) => x.openId === emp))) continue;
-      p.events.forEach((e, i) => {
-        const d = klDay(e.at);
-        resiByDay.set(d, [...(resiByDay.get(d) ?? []), { key: `${p.id}-${i}`, kind: e.kind, p }]);
-      });
-    }
+  const salesByDay = new Map<number, SalesEvent[]>();
+  for (const e of sales) {
+    if ((dept !== 'All' && dept !== e.dept) || (emp !== 'all' && !e.team.some((x) => x.openId === emp))) continue;
+    const d = klDay(e.at);
+    salesByDay.set(d, [...(salesByDay.get(d) ?? []), e]);
   }
   const shift = (n: number) => {
     const d = new Date(Date.UTC(y, m - 1 + n, 1));
@@ -48,7 +42,7 @@ export default function Calendar({ resi = [] }: { resi?: ResiProject[] }) {
     const list = (byDay.get(d) ?? []).slice().sort((a, b) => Number(a.done) - Number(b.done) || prioMeta(a.priority).rank - prioMeta(b.priority).rank);
     const s = dayToIso(d);
     const items = [
-      ...(resiByDay.get(d) ?? []).map((e) => ({ id: e.key, title: `${e.kind === 'Site visit' ? 'SV' : 'Install'}: ${e.p.client || e.p.code}`, tone: 'n' })),
+      ...(salesByDay.get(d) ?? []).map((e) => ({ id: e.key, title: `${e.dept === 'C&I' ? 'C&I ' : ''}${e.short}: ${e.client}`, tone: 'n' })),
       ...list.map((t) => ({ id: t.id, title: t.title, tone: evTone(t) })),
     ];
     const out = d < first || d > last;
@@ -61,12 +55,12 @@ export default function Calendar({ resi = [] }: { resi?: ResiProject[] }) {
     );
   }
   const dayList = (byDay.get(isoToDay(sel)) ?? []).slice().sort((a, b) => prioMeta(a.priority).rank - prioMeta(b.priority).rank);
-  const dayResi = resiByDay.get(isoToDay(sel)) ?? [];
+  const daySales = salesByDay.get(isoToDay(sel)) ?? [];
   const noDue = tasks.filter((t) => !t.done && !Number.isFinite(t.dueDay)).length;
   return (
     <>
       <div className="topbar">
-        <div><h1 className="title">Calendar</h1><p className="muted">Task deadlines across the company (Estimate Deadline){resi.length > 0 && ', plus Residential site visits and installations'}</p></div>
+        <div><h1 className="title">Calendar</h1><p className="muted">Task deadlines across the company (Estimate Deadline){sales.length > 0 && ', plus Residential and C&I site visits, installations and meetings'}</p></div>
         <div className="row">
           <button type="button" className="icon-btn" onClick={() => shift(-1)} aria-label="Previous month"><Icon n="left" /></button>
           <b style={{ minWidth: 140, textAlign: 'center', fontSize: 15 }}>{MONL[m - 1]} {y}</b>
@@ -80,7 +74,7 @@ export default function Calendar({ resi = [] }: { resi?: ResiProject[] }) {
         <span className="row" style={{ gap: 6 }}><span className="dot d-a" />Stalled</span>
         <span className="row" style={{ gap: 6 }}><span className="dot d-r" />Overdue</span>
         <span className="row" style={{ gap: 6 }}><span className="dot d-g" />Completed</span>
-        {resi.length > 0 && <span className="row" style={{ gap: 6 }}><span className="dot d-n" />Residential site visit (SV) or installation</span>}
+        {sales.length > 0 && <span className="row" style={{ gap: 6 }}><span className="dot d-n" />Residential and C&amp;I (SV = site visit)</span>}
         {noDue > 0 && <span className="muted">{plural(noDue, 'open task')} with no deadline set are not shown.</span>}
       </div>
       <div className="cal">
@@ -94,24 +88,21 @@ export default function Calendar({ resi = [] }: { resi?: ResiProject[] }) {
         </div>
         <TaskTable list={dayList} empty="Nothing due on this day." />
       </section>
-      {dayResi.length > 0 && (
+      {daySales.length > 0 && (
         <section className="card">
-          <div className="spread">
-            <h2>Residential on this day</h2>
-            <LarkLink href={RESI_LARK_URL}>Projects in Lark</LarkLink>
-          </div>
+          <h2>Residential and C&amp;I on this day</h2>
           <div className="tbl">
             <table>
-              <thead><tr><th>What</th><th>Project</th><th>Client</th><th>kWp</th><th>Stage</th><th>Team</th></tr></thead>
+              <thead><tr><th>Dept</th><th>What</th><th>Client</th><th>Details</th><th>Team</th><th /></tr></thead>
               <tbody>
-                {dayResi.map((e) => (
+                {daySales.map((e) => (
                   <tr key={e.key}>
+                    <td>{e.dept}</td>
                     <td>{e.kind}</td>
-                    <td className="num">{e.p.code || '—'}</td>
-                    <td>{e.p.client || '—'}</td>
-                    <td className="num">{e.p.kwp ?? '—'}</td>
-                    <td>{e.p.stage || '—'}</td>
-                    <td>{[...new Set(e.p.team.map((x) => x.name))].join(', ') || '—'}</td>
+                    <td>{e.client || '—'}</td>
+                    <td>{e.detail || '—'}</td>
+                    <td>{[...new Set(e.team.map((x) => x.name))].join(', ') || '—'}</td>
+                    <td><LarkLink href={e.link}>Lark</LarkLink></td>
                   </tr>
                 ))}
               </tbody>
