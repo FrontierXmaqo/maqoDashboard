@@ -3,7 +3,7 @@
 
 import { READ_CACHE_SECONDS } from '../../config/app.ts';
 import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
-import { CI_BASE, RESI_BASE, RESI_SALES_BASE, RESI_STAGES, type CiTarget, type ResiProject, type ResiSale, type SalesData } from '../sales-model.ts';
+import { CI_BASE, CI_SE_LARK_URL, RESI_BASE, RESI_SALES_BASE, RESI_STAGES, type CiTarget, type SalesEvent, type ResiProject, type ResiSale, type SalesData } from '../sales-model.ts';
 import { cached } from './cache.ts';
 import { datetime, display, num, single, users } from './parse.ts';
 import { fixturesEnabled } from './fixtures.ts';
@@ -107,4 +107,28 @@ export async function loadCi(): Promise<SalesData<CiTarget[]>> {
   ]);
   const closed = closedCounts(cases);
   return { generatedAt: Date.now(), rows: targets.map(mapTarget).map((t) => ({ ...t, closedN: closed.get(t.sales[0]?.openId ?? '') ?? 0 })), warnings };
+}
+
+/** C&I first meetings and site visits from SE 2026. Lost deals are left out. */
+export function mapCiEvents(rec: LarkRecord): SalesEvent[] {
+  const f = rec.fields ?? {};
+  const status = (single(f['Client Status']) ?? '').trim();
+  if (status.toLowerCase().startsWith('lost')) return [];
+  const kwp = num(f['System Size (kWp)']);
+  const base = {
+    dept: 'C&I' as const,
+    client: display(f['Client Name']),
+    detail: [status, kwp != null ? `${kwp} kWp` : ''].filter(Boolean).join(' · '),
+    team: ['Sales PIC', 'SE', 'Maqo Attendess', 'Site Visit By', 'Support'].flatMap((k) => users(f[k])),
+    link: CI_SE_LARK_URL,
+  };
+  const dates: [string, string, string][] = [['First Appointment Date & Start Time', 'First meeting', 'Meeting'], ['Site Visit Date', 'Site visit', 'SV']];
+  return dates.flatMap(([k, kind, short], i) => {
+    const at = datetime(f[k]);
+    return at == null ? [] : [{ ...base, key: `${rec.record_id}-${i}`, kind, short, at }];
+  });
+}
+
+export async function loadCiEvents(): Promise<SalesEvent[]> {
+  return (await read(CI_BASE, CI_SE).catch(() => [])).flatMap(mapCiEvents);
 }
