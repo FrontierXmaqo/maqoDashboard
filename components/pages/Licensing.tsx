@@ -4,14 +4,14 @@ import { Kpi } from './SalesBits';
 
 // shortcut: no ATAP applications table yet, so the page is an empty layout; wire it to Lark when the table exists.
 
-/** ATAP / NEM applications and where they are stuck. Layout follows the Department Views prototype. */
+/** ATAP applications and where they are stuck. Layout follows the Department Views prototype. */
 export default function Licensing() {
   return (
     <>
       <div className="topbar">
         <div>
           <h1 className="title">Licensing</h1>
-          <p className="muted">ATAP and NEM applications and where they are stuck. Waiting for data: fills in once the ATAP applications table in Lark is connected.</p>
+          <p className="muted">ATAP applications and where they are stuck. Waiting for data: fills in once the ATAP applications table in Lark is connected.</p>
         </div>
       </div>
       <div className="kpis k4">
