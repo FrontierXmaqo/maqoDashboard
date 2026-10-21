@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ATAP_DONE, ATAP_STAGES, AUTHORITIES, NOT_STARTED, STALE_DAYS, daysSince, isApproved, licenceIssues, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
+import { ATAP_DONE, ATAP_STAGES, AUTHORITIES, NOT_STARTED, STALE_DAYS, isApproved, licenceIssues, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
 import type { Tone } from '../../lib/model';
 import type { SalesData } from '../../lib/sales-model';
 import { NotSet, Pill, Seg } from '../ui';
@@ -9,6 +9,7 @@ import { Kpi, LarkLink, SalesWarnings } from './SalesBits';
 
 type Cat = 'All' | LicensingCategory;
 
+const klDate = (ms: number) => new Date(ms).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kuala_Lumpur' });
 const tone = (s: string): Tone => (!s ? 'n' : s === ATAP_DONE || isApproved(s) ? 'g' : /reject|not/i.test(s) ? 'r' : /submit|seda approval/i.test(s) ? 'b' : 'a');
 const stageNo = (l: Licence) => ATAP_STAGES.indexOf(l.atapStatus) + 1; // 0 = not set or unknown
 
@@ -117,7 +118,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
                     <Client l={l} />
                     <td><Steps l={l} /></td>
                     <td>{l.atapStatus ? <Pill tone={tone(l.atapStatus)}>{l.atapStatus}</Pill> : <NotSet />}<Issues l={l} /></td>
-                    <td className="num">{l.submittedAt == null ? <NotSet /> : `${daysSince(l.submittedAt, now)} days ago`}</td>
+                    <td className="num">{l.submittedAt == null ? <NotSet /> : klDate(l.submittedAt)}</td>
                     <td><Open l={l} /></td>
                   </tr>
                 ))}
@@ -143,12 +144,11 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
               <tbody>
                 {ci.length === 0 && <tr><td colSpan={4} className="empty">No C&I applications.</td></tr>}
                 {ci.map((l) => {
-                  const d = daysSince(l.lastUpdate, now);
                   return (
                     <tr key={l.id}>
                       <Client l={l} />
                       <td><Authorities l={l} /></td>
-                      <td className="num">{l.done ? <Pill tone="g">All approved</Pill> : d == null ? <NotSet /> : isStale(l, now) ? <Pill tone="r">{d} days ago</Pill> : `${d} days ago`}</td>
+                      <td className="num">{l.done ? <Pill tone="g">All approved</Pill> : l.lastUpdate == null ? <NotSet /> : isStale(l, now) ? <Pill tone="r">{klDate(l.lastUpdate)}</Pill> : klDate(l.lastUpdate)}</td>
                       <td><Open l={l} /></td>
                     </tr>
                   );
