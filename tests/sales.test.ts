@@ -78,6 +78,12 @@ test('licensing: resi ATAP rows and C&I per-authority rows, summary and stale fl
   const r = mapResiLicence({ record_id: 'l1', fields: { 'Client Name': [{ type: 'text', text: 'Tan' }], 'Documents Status': 'Pending Documents', 'ATAP Application Status': 'ATAP Approved', 'eATAP Payment': 112.5, 'Sales PIC': { type: 11, value: amy }, 'Submit Declaration Link': { type: 1, value: [{ type: 'text', text: 'https://x.test' }] }, 'Signed Declaration Form': { type: 17, value: [{ name: 's.pdf' }] }, 'ATAP Cert': [{ name: 'c.pdf' }], 'ATAP Submission Date': 5 } });
   // Lookups (Sales PIC, Signed Declaration Form) and the link formula are unwrapped.
   assert.deepEqual([r.client, r.declarationLink, r.cert, r.signedForm, r.sales[0].openId, r.submittedAt, r.done], ['Tan', 'https://x.test', 1, 1, 'ou_a', 5, true]);
+  const { licenceIssues } = await import('../lib/licensing-model.ts');
+  assert.deepEqual(licenceIssues(r), ['ATAP approved but Documents Status is still pending']);
+  const early = mapResiLicence({ record_id: 'l3', fields: { 'Client Name': 'Lee', 'ATAP Application Status': 'Pending ATAP Application', 'ATAP Submission Date': 5 } });
+  const late = mapResiLicence({ record_id: 'l4', fields: { 'Client Name': 'Ng', 'ATAP Application Status': 'Pending SEDA Approval' } });
+  assert.equal(licenceIssues(early).length, 1);
+  assert.equal(licenceIssues(late)[0], 'Status is past submission but ATAP Submission Date is empty');
   // MGTC not needed, all three approved -> done. Truncated field names are found by prefix.
   const a = mapCiLicence({ record_id: 'c1', fields: { 'CLIENT NAME 1': 'UV Sdn Bhd', 'MGTC NEEDED ??': 'NO', 'SEDA STATUS': 'APPROVED', 'ST STATUS': 'APPROVED', 'TNB STATUS': 'APPROVED', 'ST DATE OF UPDATE': 90 * day, KWP: [{ type: 'text', text: '997.050' }], 'Link Whatssapp Group': { link: 'https://chat.whatsapp.com/x', text: 'x' } } });
   assert.equal(a.chatLink, 'https://chat.whatsapp.com/x');

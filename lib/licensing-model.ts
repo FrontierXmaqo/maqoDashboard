@@ -70,6 +70,19 @@ export type Licence = {
   chatLink: string;
 };
 
+const SUBMITTED_STEP = ATAP_STAGES.indexOf('Submitted ATAP Application') + 1;
+
+/** Resi rows whose Lark data contradicts its own status, so the team can fix them in Lark. */
+export function licenceIssues(l: Licence): string[] {
+  if (l.category !== 'Resi') return [];
+  const step = ATAP_STAGES.indexOf(l.atapStatus) + 1;
+  const out: string[] = [];
+  if (step >= SUBMITTED_STEP && l.submittedAt == null) out.push('Status is past submission but ATAP Submission Date is empty');
+  if (step > 0 && step < SUBMITTED_STEP && l.submittedAt != null) out.push('Has an ATAP Submission Date but status is before submission');
+  if (l.done && l.documentsStatus.toLowerCase().startsWith('pending')) out.push('ATAP approved but Documents Status is still pending');
+  return out;
+}
+
 export const daysSince = (ms: number | null, now: number) => (ms == null ? null : Math.floor((now - ms) / DAY));
 export const isStale = (l: Licence, now: number) => l.category === 'C&I' && !l.done && (daysSince(l.lastUpdate, now) ?? Infinity) >= STALE_DAYS;
 

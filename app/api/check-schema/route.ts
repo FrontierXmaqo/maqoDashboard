@@ -5,7 +5,7 @@ import { runSchemaCheck } from '../../../lib/schema/run.ts';
 import { listFields, listTables } from '../../../lib/lark/bitable.ts';
 import { fieldTypeName } from '../../../config/schema.ts';
 import { loadLicensing } from '../../../lib/data/licensing.ts';
-import { licensingSummary } from '../../../lib/licensing-model.ts';
+import { licenceIssues, licensingSummary } from '../../../lib/licensing-model.ts';
 
 /** What the Licensing page reads from the live rows: counts and how often each field is filled. No names. */
 async function licensingLines(): Promise<string[]> {
@@ -28,6 +28,9 @@ async function licensingLines(): Promise<string[]> {
       filled('lastUpdate', list.filter((l) => l.lastUpdate).length),
       filled('chat', list.filter((l) => l.chatLink).length),
     ].join(', ')}`);
+    const issues = new Map<string, number>();
+    for (const l of list) for (const i of licenceIssues(l)) issues.set(i, (issues.get(i) ?? 0) + 1);
+    for (const [i, n] of issues) out.push(`  ! ${n} rows: ${i}`);
     if (cat === 'Resi') out.push(`  stages: ${s.stages.map((x) => `${x.stage} ${x.n}`).join(' / ')}`);
     else for (const a of s.authorities) out.push(`  ${a.name}: ${a.statuses.map((x) => `${x.status} ${x.n}`).join(' / ')}`);
   }

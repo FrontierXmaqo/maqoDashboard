@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ATAP_DONE, ATAP_STAGES, AUTHORITIES, NOT_STARTED, STALE_DAYS, daysSince, isApproved, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
+import { ATAP_DONE, ATAP_STAGES, AUTHORITIES, NOT_STARTED, STALE_DAYS, daysSince, isApproved, licenceIssues, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
 import type { Tone } from '../../lib/model';
 import type { SalesData } from '../../lib/sales-model';
 import { NotSet, Pill, Seg } from '../ui';
@@ -12,22 +12,31 @@ type Cat = 'All' | LicensingCategory;
 const tone = (s: string): Tone => (!s ? 'n' : s === ATAP_DONE || isApproved(s) ? 'g' : /reject|not/i.test(s) ? 'r' : /submit|seda approval/i.test(s) ? 'b' : 'a');
 const stageNo = (l: Licence) => ATAP_STAGES.indexOf(l.atapStatus) + 1; // 0 = not set or unknown
 
-/** Resi: one dot per ATAP step, filled up to the current step. */
+/** Resi: one dot per ATAP step. Steps before the current one are done, the current one is in progress. */
 function Steps({ l }: { l: Licence }) {
   const n = stageNo(l);
+  const done = l.done ? ATAP_STAGES.length : Math.max(n - 1, 0);
   return (
-    <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }} role="img" aria-label={`Step ${n} of ${ATAP_STAGES.length}`}>
-      {ATAP_STAGES.map((s, i) => <span key={s} className={`dot d-${i < n ? (l.done ? 'g' : 'b') : 'n'}`} title={s} />)}
-      <span className="muted num" style={{ marginLeft: 4 }}>{n}/{ATAP_STAGES.length}</span>
+    <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }} role="img" aria-label={`${done} of ${ATAP_STAGES.length} steps done`}>
+      {ATAP_STAGES.map((s, i) => <span key={s} className={`dot d-${i < done ? 'g' : i === n - 1 ? 'a' : 'n'}`} title={s} />)}
+      <span className="muted num" style={{ marginLeft: 4 }}>{done}/{ATAP_STAGES.length}</span>
     </span>
   );
+}
+
+/** Rows whose Lark data contradicts itself. */
+function Issues({ l }: { l: Licence }) {
+  const list = licenceIssues(l);
+  return list.length ? <div style={{ marginTop: 4 }}><span className="pill t-r">Check in Lark</span> <span className="muted">{list.join('. ')}.</span></div> : null;
 }
 
 /** C&I: one chip per authority. */
 const MARK: Record<Tone, string> = { g: '✓', b: '◐', a: '◐', r: '✕', n: '○' };
 function Authorities({ l }: { l: Licence }) {
+  const ok = l.authorities.filter((a) => isApproved(a.status)).length;
   return (
-    <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+    <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+      <span className="muted num">{ok}/{l.authorities.length}</span>
       {AUTHORITIES.map((a) => {
         const x = l.authorities.find((y) => y.name === a);
         if (!x) return <span key={a} className="pill t-n" style={{ opacity: 0.55 }} title={`${a}: not needed`}>{a} –</span>;
@@ -107,7 +116,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
                   <tr key={l.id}>
                     <Client l={l} />
                     <td><Steps l={l} /></td>
-                    <td>{l.atapStatus ? <Pill tone={tone(l.atapStatus)}>{l.atapStatus}</Pill> : <NotSet />}</td>
+                    <td>{l.atapStatus ? <Pill tone={tone(l.atapStatus)}>{l.atapStatus}</Pill> : <NotSet />}<Issues l={l} /></td>
                     <td className="num">{l.submittedAt == null ? <NotSet /> : `${daysSince(l.submittedAt, now)} days ago`}</td>
                     <td><Open l={l} /></td>
                   </tr>
@@ -130,7 +139,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
           </div>
           <div className="tbl">
             <table>
-              <thead><tr><th>Client</th><th>SEDA · ST · TNB · MGTC</th><th>Last update</th><th><span className="sr">Lark</span></th></tr></thead>
+              <thead><tr><th>Client</th><th>Approved · SEDA · ST · TNB · MGTC</th><th>Last update</th><th><span className="sr">Lark</span></th></tr></thead>
               <tbody>
                 {ci.length === 0 && <tr><td colSpan={4} className="empty">No C&I applications.</td></tr>}
                 {ci.map((l) => {
@@ -147,7 +156,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
               </tbody>
             </table>
           </div>
-          <p className="muted">✓ approved · ◐ in progress · ✕ rejected · ○ not started · – not needed. Hover a chip for the exact status. Red = no update in {STALE_DAYS}+ days.</p>
+          <p className="muted">Authorities run in parallel, so there is no fixed order. ✓ approved · ◐ in progress · ✕ rejected · ○ not started · – not needed. Hover a chip for the exact status. Red = no update in {STALE_DAYS}+ days.</p>
         </section>
       )}
     </>
