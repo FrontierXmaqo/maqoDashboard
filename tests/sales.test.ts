@@ -88,6 +88,9 @@ test('licensing: resi ATAP rows and C&I per-authority rows, summary and stale fl
   assert.deepEqual([isStale(a, now), isStale(b, now)], [false, true]);
   const s = licensingSummary([r, a, b], now);
   assert.deepEqual([s.total, s.done, s.inProgress, s.pendingDocs, s.stale, s.kwp], [3, 2, 1, 1, 1, 997.05]);
+  assert.equal(mapCiLicence({ record_id: 'c3', fields: { 'CLIENT NAME 1': 'X' } }).authorities.length, 4); // blank MGTC NEEDED counts as needed
+  const { statusRank } = await import('../lib/licensing-model.ts');
+  assert.deepEqual(['APPROVED', 'REJECTED', 'WAITING FOR VERIFICATION', 'SUBMITTED', ''].sort((x, y) => statusRank(x) - statusRank(y)), ['', 'SUBMITTED', 'WAITING FOR VERIFICATION', 'REJECTED', 'APPROVED']);
   assert.deepEqual(s.authorities.find((x) => x.name === 'MGTC')?.statuses, [{ status: 'IN PROGRESS', n: 1 }]);
-  assert.deepEqual(s.authorities.find((x) => x.name === 'ST')?.statuses, [{ status: 'APPROVED', n: 1 }, { status: 'Not set', n: 1 }]);
+  assert.deepEqual(s.authorities.find((x) => x.name === 'ST')?.statuses, [{ status: 'Not started', n: 1 }, { status: 'APPROVED', n: 1 }]);
 });

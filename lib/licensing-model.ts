@@ -27,6 +27,19 @@ const DAY = 86_400_000;
 
 export const isApproved = (s: string) => /approved|done|completed/i.test(s) && !/not|reject/i.test(s);
 
+/** A blank authority status in the C&I table means the step has not started. */
+export const NOT_STARTED = 'Not started';
+
+/** Where a C&I status sits in the process (SEDA, ST, TNB options), for ordering. */
+export function statusRank(s: string): number {
+  if (!s || s === NOT_STARTED) return 0;
+  if (/^submit/i.test(s)) return 1;
+  if (/waiting for v/i.test(s)) return 2;
+  if (/reject/i.test(s)) return 4;
+  if (isApproved(s)) return 5;
+  return 3;
+}
+
 export type Licence = {
   id: string;
   category: LicensingCategory;
@@ -70,14 +83,14 @@ export function licensingSummary(list: Licence[], now: number) {
     paidRm: resi.reduce((s, l) => s + (l.payment ?? 0), 0),
     kwp: ci.reduce((s, l) => s + (l.kwp ?? 0), 0),
     stages: [...ATAP_STAGES.filter((s) => counts.has(s)), ...other].map((stage) => ({ stage, n: counts.get(stage) ?? 0 })),
-    /** Per authority, how many C&I cases sit at each status, most common first. */
+    /** Per authority, how many C&I cases sit at each status, in process order. */
     authorities: AUTHORITIES.map((name) => {
       const m = new Map<string, number>();
       for (const l of ci) {
         const a = l.authorities.find((x) => x.name === name);
-        if (a) m.set(a.status || 'Not set', (m.get(a.status || 'Not set') ?? 0) + 1);
+        if (a) m.set(a.status || NOT_STARTED, (m.get(a.status || NOT_STARTED) ?? 0) + 1);
       }
-      return { name, statuses: [...m.entries()].sort((a, b) => b[1] - a[1]).map(([status, n]) => ({ status, n })) };
+      return { name, statuses: [...m.entries()].sort((a, b) => statusRank(a[0]) - statusRank(b[0]) || a[0].localeCompare(b[0])).map(([status, n]) => ({ status, n })) };
     }),
   };
 }

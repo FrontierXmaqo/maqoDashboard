@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AUTHORITIES, ATAP_DONE, STALE_DAYS, daysSince, isApproved, isStale, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
+import { AUTHORITIES, ATAP_DONE, NOT_STARTED, STALE_DAYS, daysSince, isApproved, isStale, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
 import type { Tone } from '../../lib/model';
 import type { SalesData } from '../../lib/sales-model';
 import { Avatar, NotSet, Pill, Seg } from '../ui';
@@ -67,7 +67,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
                 {s.authorities.map((a) => (
                   <tr key={a.name}>
                     <th scope="row">{a.name}{a.name === 'MGTC' && <span className="muted"> (where needed)</span>}</th>
-                    <td><span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{a.statuses.length ? a.statuses.map((x) => <Pill key={x.status} tone={tone(x.status === 'Not set' ? '' : x.status)}>{x.status}: {x.n}</Pill>) : <NotSet />}</span></td>
+                    <td><span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{a.statuses.length ? a.statuses.map((x) => <Pill key={x.status} tone={tone(x.status === NOT_STARTED ? '' : x.status)}>{x.status}: {x.n}</Pill>) : <NotSet />}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -94,7 +94,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
                       <td><Sales l={l} /></td>
                       {AUTHORITIES.map((a) => {
                         const x = l.authorities.find((y) => y.name === a);
-                        return <td key={a}>{x ? <St s={x.status} /> : <span className="muted">Not needed</span>}</td>;
+                        return <td key={a}>{x ? (x.status ? <St s={x.status} /> : <Pill tone="n">{NOT_STARTED}</Pill>) : <span className="muted">Not needed</span>}</td>;
                       })}
                       <td className="num">{d == null ? <NotSet /> : isStale(l, now) ? <Pill tone="r">{d} days ago</Pill> : `${d} days ago`}</td>
                       <td>{l.remarks || <NotSet />}</td>

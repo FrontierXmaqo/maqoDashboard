@@ -59,7 +59,8 @@ const DATE_FIELD: Record<string, string> = { SEDA: 'SEDA DATE OF UPDATE', ST: 'S
 
 export function mapCiLicence(rec: LarkRecord): Licence {
   const f = rec.fields ?? {};
-  const mgtcNeeded = (single(get(f, 'MGTC NEEDED')) ?? '').toUpperCase() === 'YES';
+  // Blank counts as needed: the team marks NO where MGTC does not apply.
+  const mgtcNeeded = (single(get(f, 'MGTC NEEDED')) ?? '').toUpperCase() !== 'NO';
   const authorities = AUTHORITIES.filter((a) => a !== 'MGTC' || mgtcNeeded).map((name) => ({
     name,
     status: single(get(f, `${name} STATUS`)) ?? '',
