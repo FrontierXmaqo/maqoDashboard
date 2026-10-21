@@ -11,6 +11,7 @@ import { STAGES, STATUS, personInDept, taskInDept, type Model, type PersonX, typ
 import type { Stage } from '../../lib/types';
 import { RESI_MONTHLY_TARGET, yearPace, type SalesSummary } from '../../lib/sales-model';
 import { rmk, kwp } from './SalesBits';
+import { CI_BUCKETS, STALE_DAYS, type LicensingOverview } from '../../lib/licensing-model';
 
 type Att = { sev: number; tone: Tone; tag: string; title: string; meta: string; ref: ['task' | 'emp', string] };
 
@@ -29,7 +30,7 @@ function attention(M: Model): Att[] {
   return out.sort((a, b) => b.sev - a.sev);
 }
 
-function AttentionCard({ M, extra = [], tasks = true }: { M: Model; extra?: SalesSummary['alerts']; tasks?: boolean }) {
+function AttentionCard({ M, extra = [], tasks = true }: { M: Model; extra?: (SalesSummary['alerts'][number] & { tag?: string; tone?: Tone })[]; tasks?: boolean }) {
   const { open } = useData();
   const router = useRouter();
   const all = useMemo(() => attention(M), [M]);
@@ -43,9 +44,9 @@ function AttentionCard({ M, extra = [], tasks = true }: { M: Model; extra?: Sale
       <div className="stack" style={{ gap: 2, maxHeight: 360, overflowY: 'auto' }}>
         {extra.map((x) => (
           <button key={x.text} type="button" className="list-btn" onClick={() => router.push(x.href)}>
-            <span className="dot d-a" style={{ marginTop: 5 }} />
+            <span className={`dot d-${x.tone ?? 'a'}`} style={{ marginTop: 5 }} />
             <span style={{ flexGrow: 1, minWidth: 0, fontWeight: 500 }}>{x.text}</span>
-            <span className="tag t-a">Sales</span>
+            <span className="tag t-a">{x.tag ?? 'Sales'}</span>
           </button>
         ))}
         {att.length || extra.length ? (
@@ -279,10 +280,10 @@ function ProgressCard({ M, range, from, to }: { M: Model; range: Range; from: st
   );
 }
 
-export default function Overview({ sales }: { sales: SalesSummary | null }) {
+export default function Overview({ sales, licensing }: { sales: SalesSummary | null; licensing: LicensingOverview | null }) {
   const { M } = useData();
   if (M.viewer.role === 'employee') return <MyWork />;
-  if (M.viewer.role === 'ceo' && sales) return <CeoOverview sales={sales} />;
+  if (M.viewer.role === 'ceo' && sales) return <CeoOverview sales={sales} licensing={licensing} />;
   return <TeamOverview />;
 }
 
@@ -294,6 +295,14 @@ function DeptCard({ href, title, big, bigL, subs, flag }: { href: string; title:
       <span className="sub">{subs.map(([v, l]) => <span key={l}><b className="num">{v}</b><span className="muted">{l}</span></span>)}</span>
     </Link>
   );
+}
+
+function licensingAlerts(L: LicensingOverview | null) {
+  if (!L) return [];
+  const out: { text: string; href: string; tag: string; tone: Tone }[] = [];
+  if (L.stale) out.push({ text: `${plural(L.stale, 'C&I licensing case')} with no update for ${STALE_DAYS}+ days`, href: '/licensing', tag: 'Licensing', tone: 'r' });
+  if (L.issues) out.push({ text: `${plural(L.issues, 'Resi licensing record')} to check in Lark (status and dates don't match)`, href: '/licensing', tag: 'Licensing', tone: 'a' });
+  return out;
 }
 
 const NOT_CONNECTED = ['Marketing and Procurement (pages ready, waiting for data)', 'Finance', 'HR'];
@@ -392,7 +401,66 @@ function TargetRow({ label, done, target, fmt, pace, href, missing }: { label: s
 }
 
 /** CEO view, read top to bottom: the headline numbers, sales against target, departments, what needs attention, people. */
-function CeoOverview({ sales }: { sales: SalesSummary }) {
+/** Bucket fills: one hue from light (not started) to dark (approved); rejected is the status red. */
+const BUCKET_FILL = ['var(--seq0)', 'var(--seq1)', 'var(--seq2)', 'var(--seq3)', 'var(--r-dot)'];
+const BUCKET_INK = ['var(--text)', 'var(--text)', 'var(--seq-ink)', 'var(--seq-ink)', '#fff'];
+
+/** How many applications sit at each step: Resi ATAP steps as bars, C&I authorities as split bars. */
+function LicensingCard({ L }: { L: LicensingOverview }) {
+  const max = Math.max(1, ...L.resi.map((r) => r.n));
+  const resiTotal = L.resi.reduce((t, r) => t + r.n, 0);
+  const ciCases = Math.max(0, ...L.ci.map((a) => a.total));
+  const shown = CI_BUCKETS.map((_, k) => k).filter((k) => k < 4 || L.ci.some((a) => a.buckets[k]));
+  return (
+    <section className="card" aria-labelledby="h-lic">
+      <div className="spread">
+        <h2 id="h-lic">Licensing: where applications are</h2>
+        <Link className="muted" href="/licensing">Open Licensing page →</Link>
+      </div>
+      <div className="lviz">
+        <figure className="lfig" aria-labelledby="cap-resi">
+          <figcaption id="cap-resi"><b>Resi ATAP</b> <span className="muted">· {resiTotal} applications by step</span></figcaption>
+          <div className="stack" style={{ gap: 6 }}>
+            {L.resi.map((r, i) => (
+              <Link key={r.stage} href="/licensing" className={`hb${r.n ? '' : ' zero'}`} title={`${i + 1}. ${r.stage}: ${r.n}`}>
+                <span className="lab">{i + 1}. {r.stage}</span>
+                <span className="track">{r.n > 0 && <span className="fill" style={{ width: `${(r.n / max) * 85}%` }} />}<span className="val num">{r.n}</span></span>
+              </Link>
+            ))}
+          </div>
+        </figure>
+        <figure className="lfig" aria-labelledby="cap-ci">
+          <figcaption id="cap-ci"><b>C&amp;I approvals</b> <span className="muted">· {ciCases} cases, authorities run in parallel</span></figcaption>
+          <div className="legend">{shown.map((k) => <span key={k}><span className="sw" style={{ background: BUCKET_FILL[k] }} />{CI_BUCKETS[k]}</span>)}</div>
+          <div className="stack" style={{ gap: 12 }}>
+            {L.ci.map((a) => (
+              <Link key={a.name} href="/licensing" className="sk" aria-label={`${a.name}: ${a.buckets.map((n, k) => `${n} ${CI_BUCKETS[k].toLowerCase()}`).join(', ')}`}>
+                <b>{a.name}</b>
+                <span className="bar2">
+                  {a.buckets.map((n, k) => n > 0 && (
+                    <i key={k} title={`${a.name} · ${CI_BUCKETS[k]}: ${n}`} style={{ flex: n, background: BUCKET_FILL[k], color: BUCKET_INK[k] }}>{n / a.total >= 0.08 ? n : ''}</i>
+                  ))}
+                </span>
+                <span className="muted num" style={{ textAlign: 'right' }}>{a.buckets[3]}/{a.total} ✓</span>
+              </Link>
+            ))}
+          </div>
+        </figure>
+      </div>
+      <details>
+        <summary className="muted">Show as table</summary>
+        <div className="tbl">
+          <table>
+            <thead><tr><th>Authority</th>{CI_BUCKETS.map((b) => <th key={b}>{b}</th>)}<th>Total</th></tr></thead>
+            <tbody>{L.ci.map((a) => <tr key={a.name}><th scope="row">{a.name}</th>{a.buckets.map((n, k) => <td key={k} className="num">{n}</td>)}<td className="num">{a.total}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+  );
+}
+
+function CeoOverview({ sales, licensing }: { sales: SalesSummary; licensing: LicensingOverview | null }) {
   const { M } = useData();
   const [showAll, setShowAll] = useState(false);
   const { resi, ci } = sales;
@@ -450,6 +518,8 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
         <TargetRow label="C&I" href="/ci" pace={pace} done={ci?.closedRm ?? 0} target={ci?.target || null} fmt={rmk} missing="No targets in the C&I Target table." />
       </section>
 
+      {licensing && <LicensingCard L={licensing} />}
+
       <div className="dgrid">
         {resi ? (
           <DeptCard href="/residential" title="Residential sales" big={rmk(resi.sales.fyRm)} bigL={`${resi.sales.fyLabel}, ${plural(resi.sales.fyCases, 'case')}, ${kwp(resi.sales.fyKwp)}`} subs={[[rmk(resi.sales.monthRm), `this month (target ${rmk(RESI_MONTHLY_TARGET)})`], [resi.ongoing, 'projects ongoing']]} />
@@ -467,7 +537,7 @@ function CeoOverview({ sales }: { sales: SalesSummary }) {
       </div>
       <p className="muted">Not connected to Lark yet: {NOT_CONNECTED.join(', ')}.</p>
 
-      <AttentionCard M={M} extra={sales.alerts} tasks={false} />
+      <AttentionCard M={M} extra={[...licensingAlerts(licensing), ...sales.alerts]} tasks={false} />
       <EmployeesCard M={M} sales={sales} limit={showAll ? undefined : 10} onShowAll={() => setShowAll(true)} />
     </>
   );

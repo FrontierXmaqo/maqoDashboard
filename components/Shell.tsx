@@ -47,7 +47,7 @@ export function Shell({ children }: { children: ReactNode }) {
     ));
 
   return (
-    <>
+    <div data-page={path.split('/')[1] || 'overview'} style={{ display: 'contents' }}>
       <div className="layout">
         <nav className="side" aria-label="Main">
           <div className="brand">
@@ -95,6 +95,6 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

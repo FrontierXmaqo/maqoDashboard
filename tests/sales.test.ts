@@ -99,6 +99,13 @@ test('licensing: resi ATAP rows and C&I per-authority rows, summary and stale fl
   assert.equal(mapCiLicence({ record_id: 'c3', fields: { 'CLIENT NAME 1': 'X' } }).authorities.length, 4); // blank MGTC NEEDED counts as needed
   const { statusRank } = await import('../lib/licensing-model.ts');
   assert.deepEqual(['APPROVED', 'REJECTED', 'WAITING FOR VERIFICATION', 'SUBMITTED', ''].sort((x, y) => statusRank(x) - statusRank(y)), ['', 'SUBMITTED', 'WAITING FOR VERIFICATION', 'REJECTED', 'APPROVED']);
+  const { licensingOverview } = await import('../lib/licensing-model.ts');
+  const ov = licensingOverview([r, a, b], now);
+  assert.equal(ov.resi.find((x) => x.stage === 'ATAP Approved')?.n, 1);
+  // buckets: not started, submitted, in progress / waiting, approved, rejected
+  assert.deepEqual(ov.ci.find((x) => x.name === 'MGTC'), { name: 'MGTC', total: 1, buckets: [0, 0, 1, 0, 0] });
+  assert.deepEqual(ov.ci.find((x) => x.name === 'ST')?.buckets, [1, 0, 0, 1, 0]);
+  assert.deepEqual([ov.stale, ov.issues], [1, 1]);
   assert.deepEqual(s.authorities.find((x) => x.name === 'MGTC')?.statuses, [{ status: 'IN PROGRESS', n: 1 }]);
   assert.deepEqual(s.authorities.find((x) => x.name === 'ST')?.statuses, [{ status: 'Not started', n: 1 }, { status: 'APPROVED', n: 1 }]);
 });

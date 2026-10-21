@@ -225,3 +225,40 @@ a.dcard:hover{border-color:var(--muted)}
 .dcard .sub{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;border-top:1px solid var(--line2);padding-top:10px}
 .dcard .sub b{display:block;font-size:15px;font-weight:600}
 .dcard.off{background:var(--surface2);box-shadow:none}
+
+/* One accent per page (Overview keeps Maqo green). Status colours stay the same everywhere. */
+[data-page="my-work"]{--brand:#24407A}
+[data-page="residential"]{--brand:#B4540C}
+[data-page="ci"]{--brand:#B0306A}
+[data-page="marketing"]{--brand:#8E3BB0}
+[data-page="om"]{--brand:#0E7C74}
+[data-page="engineering"]{--brand:#335C81}
+[data-page="licensing"]{--brand:#946C00}
+[data-page="procurement"]{--brand:#7A5631}
+[data-page="departments"]{--brand:#0F6FB0}
+[data-page="employees"]{--brand:#A33A3A}
+[data-page="calendar"]{--brand:#556B1E}
+[data-page="reports"]{--brand:#4338A8}
+[data-page="settings"]{--brand:#4B5563}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) [data-page="my-work"]{--brand:#9FB6EA}:root:not([data-theme="light"]) [data-page="residential"]{--brand:#F2A15A}:root:not([data-theme="light"]) [data-page="ci"]{--brand:#F28AB8}:root:not([data-theme="light"]) [data-page="marketing"]{--brand:#D69AEE}:root:not([data-theme="light"]) [data-page="om"]{--brand:#4FD1C5}:root:not([data-theme="light"]) [data-page="engineering"]{--brand:#8FB7DB}:root:not([data-theme="light"]) [data-page="licensing"]{--brand:#D4A20F}:root:not([data-theme="light"]) [data-page="procurement"]{--brand:#D2A877}:root:not([data-theme="light"]) [data-page="departments"]{--brand:#6FC0F2}:root:not([data-theme="light"]) [data-page="employees"]{--brand:#F09090}:root:not([data-theme="light"]) [data-page="calendar"]{--brand:#B5CF6B}:root:not([data-theme="light"]) [data-page="reports"]{--brand:#A5A0F0}:root:not([data-theme="light"]) [data-page="settings"]{--brand:#B4BCC8}}
+:root[data-theme="dark"] [data-page="my-work"]{--brand:#9FB6EA}:root[data-theme="dark"] [data-page="residential"]{--brand:#F2A15A}:root[data-theme="dark"] [data-page="ci"]{--brand:#F28AB8}:root[data-theme="dark"] [data-page="marketing"]{--brand:#D69AEE}:root[data-theme="dark"] [data-page="om"]{--brand:#4FD1C5}:root[data-theme="dark"] [data-page="engineering"]{--brand:#8FB7DB}:root[data-theme="dark"] [data-page="licensing"]{--brand:#D4A20F}:root[data-theme="dark"] [data-page="procurement"]{--brand:#D2A877}:root[data-theme="dark"] [data-page="departments"]{--brand:#6FC0F2}:root[data-theme="dark"] [data-page="employees"]{--brand:#F09090}:root[data-theme="dark"] [data-page="calendar"]{--brand:#B5CF6B}:root[data-theme="dark"] [data-page="reports"]{--brand:#A5A0F0}:root[data-theme="dark"] [data-page="settings"]{--brand:#B4BCC8}
+[data-page]:not([data-page="overview"]){--brand-tint:color-mix(in srgb,var(--brand) 13%,var(--surface))}
+
+/* Overview licensing chart: one hue light (not started) to dark (approved). */
+:root{--seq0:#DCE8E0;--seq1:#A3CBB3;--seq2:#4E9A71;--seq3:#11663D;--seq-ink:#FFFFFF}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--seq0:#2C3B32;--seq1:#3F6E54;--seq2:#5FB085;--seq3:#9BE0B8;--seq-ink:#08170E}}
+:root[data-theme="dark"]{--seq0:#2C3B32;--seq1:#3F6E54;--seq2:#5FB085;--seq3:#9BE0B8;--seq-ink:#08170E}
+.lviz{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}
+.lfig{margin:0;display:flex;flex-direction:column;gap:10px;min-width:0}
+.hb{display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr);gap:10px;align-items:center;font-size:12.5px;color:inherit;text-decoration:none}
+.hb .lab{color:var(--soft);text-align:right}
+.hb .track{display:flex;align-items:center;gap:6px;min-height:20px;border-left:1px solid var(--line)}
+.hb .fill{height:16px;background:var(--brand);border-radius:0 4px 4px 0}
+.hb .val{font-weight:600}
+.hb.zero .val{color:var(--muted);font-weight:400}
+.sk{display:grid;grid-template-columns:64px minmax(0,1fr) 54px;gap:10px;align-items:center;color:inherit;text-decoration:none}
+.sk .bar2{display:flex;gap:2px;height:22px}
+.sk .bar2 i{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;min-width:0}
+.sk .bar2 i:first-child{border-radius:4px 0 0 4px}.sk .bar2 i:last-child{border-radius:0 4px 4px 0}
+.legend .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+@media (max-width:900px){.lviz{grid-template-columns:minmax(0,1fr)}}
