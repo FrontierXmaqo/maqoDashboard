@@ -113,3 +113,35 @@ export function licensingSummary(list: Licence[], now: number) {
     }),
   };
 }
+
+/** C&I progress buckets for the overview chart, in process order. Waiting and in progress share one step. */
+export const CI_BUCKETS = ['Not started', 'Submitted', 'In progress / waiting', 'Approved', 'Rejected'] as const;
+const bucketOf = (status: string) => [0, 1, 2, 2, 4, 3][statusRank(status)];
+
+export type LicensingOverview = {
+  resi: { stage: string; n: number }[];
+  ci: { name: Authority; total: number; buckets: number[] }[];
+  stale: number;
+  issues: number;
+};
+
+export function licensingOverview(list: Licence[], now: number): LicensingOverview {
+  const resi = list.filter((l) => l.category === 'Resi');
+  const ci = list.filter((l) => l.category === 'C&I');
+  return {
+    resi: ATAP_STAGES.map((stage) => ({ stage, n: resi.filter((l) => l.atapStatus === stage).length })),
+    ci: AUTHORITIES.map((name) => {
+      const buckets = CI_BUCKETS.map(() => 0);
+      let total = 0;
+      for (const l of ci) {
+        const a = l.authorities.find((x) => x.name === name);
+        if (!a) continue;
+        total++;
+        buckets[bucketOf(a.status)]++;
+      }
+      return { name, total, buckets };
+    }),
+    stale: ci.filter((l) => isStale(l, now)).length,
+    issues: resi.filter((l) => licenceIssues(l).length).length,
+  };
+}
