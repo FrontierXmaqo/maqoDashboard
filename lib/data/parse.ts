@@ -52,6 +52,8 @@ export function num(v: unknown): number | null {
 }
 
 export function users(v: unknown): PersonRef[] {
+  // Lookup fields wrap the people as { type, value: [...] }.
+  if (isObj(v) && Array.isArray(v.value)) return users(v.value);
   if (!Array.isArray(v)) return [];
   const out: PersonRef[] = [];
   for (const u of v) {

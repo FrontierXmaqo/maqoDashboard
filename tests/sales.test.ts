@@ -75,10 +75,12 @@ test('licensing: resi ATAP rows and C&I per-authority rows, summary and stale fl
   const { licensingSummary, isStale } = await import('../lib/licensing-model.ts');
   const day = 86_400_000;
   const now = 100 * day;
-  const r = mapResiLicence({ record_id: 'l1', fields: { 'Client Name': [{ type: 'text', text: 'Tan' }], 'Documents Status': 'Pending Documents', 'ATAP Application Status': 'ATAP Approved', 'eATAP Payment': 112.5, 'Sales PIC': amy, 'Submit Declaration Link': { link: 'https://x.test', text: 'x' }, 'ATAP Cert': [{ name: 'c.pdf' }] } });
-  assert.deepEqual([r.client, r.declarationLink, r.cert, r.done], ['Tan', 'https://x.test', 1, true]);
+  const r = mapResiLicence({ record_id: 'l1', fields: { 'Client Name': [{ type: 'text', text: 'Tan' }], 'Documents Status': 'Pending Documents', 'ATAP Application Status': 'ATAP Approved', 'eATAP Payment': 112.5, 'Sales PIC': { type: 11, value: amy }, 'Submit Declaration Link': { type: 1, value: [{ type: 'text', text: 'https://x.test' }] }, 'Signed Declaration Form': { type: 17, value: [{ name: 's.pdf' }] }, 'ATAP Cert': [{ name: 'c.pdf' }], 'ATAP Submission Date': 5 } });
+  // Lookups (Sales PIC, Signed Declaration Form) and the link formula are unwrapped.
+  assert.deepEqual([r.client, r.declarationLink, r.cert, r.signedForm, r.sales[0].openId, r.submittedAt, r.done], ['Tan', 'https://x.test', 1, 1, 'ou_a', 5, true]);
   // MGTC not needed, all three approved -> done. Truncated field names are found by prefix.
-  const a = mapCiLicence({ record_id: 'c1', fields: { 'CLIENT NAME 1': 'UV Sdn Bhd', 'MGTC NEEDED ??': 'NO', 'SEDA STATUS': 'APPROVED', 'ST STATUS': 'APPROVED', 'TNB STATUS': 'APPROVED', 'ST DATE OF UPDATE': 90 * day, KWP: 997.05 } });
+  const a = mapCiLicence({ record_id: 'c1', fields: { 'CLIENT NAME 1': 'UV Sdn Bhd', 'MGTC NEEDED ??': 'NO', 'SEDA STATUS': 'APPROVED', 'ST STATUS': 'APPROVED', 'TNB STATUS': 'APPROVED', 'ST DATE OF UPDATE': 90 * day, KWP: [{ type: 'text', text: '997.050' }], 'Link Whatssapp Group': { link: 'https://chat.whatsapp.com/x', text: 'x' } } });
+  assert.equal(a.chatLink, 'https://chat.whatsapp.com/x');
   // MGTC needed and in progress, last update 30 days ago -> stale.
   const b = mapCiLicence({ record_id: 'c2', fields: { 'CLIENT NAME 1': 'Acme', 'MGTC NEEDED ??': 'YES', 'SEDA STATUS': 'APPROVED', 'MGTC STATUS': 'IN PROGRESS', 'DATE OF MGTC UPDATE': 70 * day, 'CAS DATE OF UPDATE': 60 * day } });
   assert.deepEqual(a.authorities.map((x) => x.name), ['SEDA', 'ST', 'TNB']);

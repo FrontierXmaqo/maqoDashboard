@@ -22,17 +22,24 @@ function get(f: Fields, ...names: string[]): unknown {
   return undefined;
 }
 
-/** Url fields come back as { link, text }; a plain string is accepted too. */
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+/** Lookup and formula fields wrap their values as { type, value: [...] }. */
+const unwrap = (v: unknown) => (isObj(v) && 'value' in v ? v.value : v);
+
+/** Url fields come back as { link, text }; formulas as text. Only http(s) links are kept. */
 function url(v: unknown): string {
-  const x = Array.isArray(v) ? v[0] : v;
-  if (typeof x === 'string') return x.trim();
-  if (x && typeof x === 'object' && typeof (x as { link?: unknown }).link === 'string') return (x as { link: string }).link;
-  return '';
+  const x = unwrap(v);
+  const first = Array.isArray(x) ? x[0] : x;
+  const s = isObj(first) && typeof first.link === 'string' ? first.link : text(x);
+  return /^https?:\/\//i.test(s) ? s : '';
 }
 
-const files = (v: unknown) => (Array.isArray(v) ? v.length : 0);
+const files = (v: unknown) => {
+  const x = unwrap(v);
+  return Array.isArray(x) ? x.length : 0;
+};
 
-const EMPTY = { projectId: '', documentsStatus: '', atapStatus: '', payment: null, declarationLink: '', signedForm: 0, cert: 0, type: '', kwp: null, authorities: [], chatLink: '', lastUpdate: null };
+const EMPTY = { projectId: '', submittedAt: null, licensingPic: [], documentsStatus: '', atapStatus: '', payment: null, declarationLink: '', signedForm: 0, cert: 0, type: '', kwp: null, authorities: [], chatLink: '', lastUpdate: null };
 
 export function mapResiLicence(rec: LarkRecord): Licence {
   const f = rec.fields ?? {};
@@ -46,6 +53,8 @@ export function mapResiLicence(rec: LarkRecord): Licence {
     remarks: '',
     done: atapStatus === ATAP_DONE,
     projectId: display(f['Project ID']),
+    submittedAt: datetime(f['ATAP Submission Date']),
+    licensingPic: users(f['Licensing Team PIC']),
     documentsStatus: single(get(f, 'Documents Status', 'Document Status')) ?? '',
     atapStatus,
     payment: num(f['eATAP Payment']),
@@ -77,10 +86,9 @@ export function mapCiLicence(rec: LarkRecord): Licence {
     done: authorities.length > 0 && authorities.every((a) => isApproved(a.status)),
     lastUpdate: dates.length ? Math.max(...dates) : null,
     type: display(get(f, 'TYPE OF APPLICATION')),
-    kwp: num(get(f, 'KWP')),
+    kwp: num(text(get(f, 'KWP')).replace(/,/g, '')),
     authorities,
-    cert: files(get(f, 'ATAP CERT')),
-    chatLink: url(get(f, 'Link Whatsapp Group')),
+    chatLink: url(get(f, 'Link Whatssapp Group', 'Link Whatsapp Group')),
   };
 }
 

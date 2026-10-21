@@ -11,6 +11,7 @@ type Cat = 'All' | LicensingCategory;
 
 const tone = (s: string): Tone => (!s ? 'n' : s === ATAP_DONE || isApproved(s) ? 'g' : /reject|not/i.test(s) ? 'r' : /submit|seda approval/i.test(s) ? 'b' : 'a');
 const St = ({ s }: { s: string }) => (s ? <Pill tone={tone(s)}>{s}</Pill> : <NotSet />);
+const klDate = (ms: number) => new Date(ms).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kuala_Lumpur' });
 const Sales = ({ l }: { l: Licence }) => (l.sales[0] ? <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><Avatar sm p={l.sales[0]} />{l.sales[0].name}</span> : <NotSet />);
 const Ext = ({ href, label }: { href: string; label: string }) => (href ? <a href={href} target="_blank" rel="noopener noreferrer">Open<span className="sr"> {label} (new tab)</span></a> : <NotSet />);
 
@@ -114,17 +115,19 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
           <h2 id="h-resi">Resi applications ({resi.length})</h2>
           <div className="tbl">
             <table>
-              <thead><tr><th>Client</th><th>Project ID</th><th>Documents</th><th>ATAP status</th><th>eATAP payment</th><th>Sales PIC</th><th>Declaration</th><th>Signed form</th><th>ATAP cert</th></tr></thead>
+              <thead><tr><th>Client</th><th>Project ID</th><th>Documents</th><th>ATAP status</th><th>Submitted</th><th>eATAP payment</th><th>Sales PIC</th><th>Licensing PIC</th><th>Declaration</th><th>Signed form</th><th>ATAP cert</th></tr></thead>
               <tbody>
-                {resi.length === 0 && <tr><td colSpan={9} className="empty">No Resi applications.</td></tr>}
+                {resi.length === 0 && <tr><td colSpan={11} className="empty">No Resi applications.</td></tr>}
                 {resi.map((l) => (
                   <tr key={l.id}>
                     <td>{l.client}</td>
                     <td className="num">{l.projectId || <NotSet />}</td>
                     <td><St s={l.documentsStatus} /></td>
                     <td><St s={l.atapStatus} /></td>
+                    <td className="num">{l.submittedAt == null ? <NotSet /> : `${klDate(l.submittedAt)} (${daysSince(l.submittedAt, now)} days)`}</td>
                     <td className="num">{l.payment != null ? rm(l.payment) : <NotSet />}</td>
                     <td><Sales l={l} /></td>
+                    <td>{l.licensingPic[0]?.name ?? <NotSet />}</td>
                     <td><Ext href={l.declarationLink} label="declaration link" /></td>
                     <td>{l.signedForm ? '✓' : <NotSet />}</td>
                     <td>{l.cert ? '✓' : <NotSet />}</td>

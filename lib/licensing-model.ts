@@ -14,7 +14,7 @@ export const licensingUrl = (c: LicensingCategory) => {
 };
 
 /** Resi ATAP Application Status options, in the order the process runs. Unknown options are listed after these. */
-export const ATAP_STAGES = ['Pending Declaration Form', 'Pending Signed Declaration', 'Pending ATAP Application', 'Submitted ATAP Application', 'Pending eATAP Payment', 'eATAP Payment Done', 'Pending SEDA Approval', 'ATAP Approved'];
+export const ATAP_STAGES = ['Pending Declaration Form', 'Pending Signed Declaration Form', 'Pending ATAP Application', 'Submitted ATAP Application', 'Pending eATAP Payment', 'eATAP Payment Done', 'Pending SEDA Approval', 'ATAP Approved'];
 export const ATAP_DONE = 'ATAP Approved';
 
 /** C&I authorities with a status field, in the order the C&I table lists them. */
@@ -51,6 +51,9 @@ export type Licence = {
   lastUpdate: number | null;
   // Resi
   projectId: string;
+  /** ATAP Submission Date, ms. */
+  submittedAt: number | null;
+  licensingPic: PersonRef[];
   documentsStatus: string;
   atapStatus: string;
   payment: number | null;
