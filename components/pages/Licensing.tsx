@@ -54,10 +54,12 @@ const Client = ({ l }: { l: Licence }) => (
 /** Licensing progress for Resi (ATAP steps) and C&I (SEDA, ST, TNB, MGTC). Details live in Lark. */
 export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
   const [cat, setCat] = useState<Cat>('All');
+  const [step, setStep] = useState<string | null>(null);
   const now = data.generatedAt;
   const list = data.rows.filter((l) => cat === 'All' || l.category === cat);
   // Open cases first; least progressed (Resi) or longest without an update (C&I) at the top.
-  const resi = list.filter((l) => l.category === 'Resi').sort((a, b) => Number(a.done) - Number(b.done) || stageNo(a) - stageNo(b));
+  const resiAll = list.filter((l) => l.category === 'Resi');
+  const resi = resiAll.filter((l) => !step || l.atapStatus === step).sort((a, b) => Number(a.done) - Number(b.done) || stageNo(a) - stageNo(b));
   const ci = list.filter((l) => l.category === 'C&I').sort((a, b) => Number(a.done) - Number(b.done) || (a.lastUpdate ?? 0) - (b.lastUpdate ?? 0));
   const s = licensingSummary(list, now);
   const showResi = cat !== 'C&I';
@@ -85,15 +87,22 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
 
       {showResi && (
         <section className="card" aria-labelledby="h-resi">
-          <h2 id="h-resi">Resi ATAP progress ({resi.length})</h2>
-          <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
-            {ATAP_STAGES.map((st, i) => <Kpi key={st} v={s.stages.find((x) => x.stage === st)?.n ?? 0} l={`${i + 1}. ${st}`} />)}
+          <h2 id="h-resi">Resi ATAP progress ({resiAll.length})</h2>
+          <p className="muted">Click a step to list only the clients at that step.</p>
+          <div className="kpis" role="group" aria-label="Filter by ATAP step" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
+            {ATAP_STAGES.map((st, i) => (
+              <button key={st} type="button" className={`kpi${step === st ? ' big' : ''}`} aria-pressed={step === st} onClick={() => setStep(step === st ? null : st)}>
+                <span className="muted">{i + 1}. {st}</span>
+                <span className="v num">{s.stages.find((x) => x.stage === st)?.n ?? 0}</span>
+              </button>
+            ))}
           </div>
+          {step && <div className="row"><span className="muted">Showing {resi.length} at “{step}”.</span><button type="button" className="btn sm" onClick={() => setStep(null)}>Show all steps</button></div>}
           <div className="tbl">
             <table>
               <thead><tr><th>Client</th><th>Progress</th><th>Current step</th><th>Submitted</th><th><span className="sr">Lark</span></th></tr></thead>
               <tbody>
-                {resi.length === 0 && <tr><td colSpan={5} className="empty">No Resi applications.</td></tr>}
+                {resi.length === 0 && <tr><td colSpan={5} className="empty">{step ? 'No clients at this step.' : 'No Resi applications.'}</td></tr>}
                 {resi.map((l) => (
                   <tr key={l.id}>
                     <Client l={l} />
