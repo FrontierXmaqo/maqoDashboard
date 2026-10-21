@@ -69,3 +69,17 @@ test('closed deals are counted per Sales PIC, whatever the status spacing', () =
   assert.equal(m.get('ou_a'), 2);
   assert.equal(m.get('ou_b'), 1);
 });
+
+test('licensing rows read url, attachment and status fields; summary counts stages', async () => {
+  const { mapLicence } = await import('../lib/data/licensing.ts');
+  const { licensingSummary } = await import('../lib/licensing-model.ts');
+  const a = mapLicence({ record_id: 'l1', fields: { 'Client Name': [{ type: 'text', text: 'Tan' }], 'Documents Status': 'Documents Completed', 'ATAP Application Status': 'ATAP Approved', 'eATAP Payment': 112.5, 'Sales PIC': amy, 'Submit Declaration Link': { link: 'https://x.test', text: 'x' }, 'ATAP Cert': [{ name: 'c.pdf' }] } }, 'Resi');
+  const b = mapLicence({ record_id: 'l2', fields: { 'Client Name': 'Lim', 'Documents Status': 'Pending Documents', 'ATAP Application Status': 'Pending ATAP Application' } }, 'C&I');
+  assert.equal(a.client, 'Tan');
+  assert.equal(a.declarationLink, 'https://x.test');
+  assert.equal(a.cert, 1);
+  assert.equal(a.payment, 112.5);
+  const s = licensingSummary([a, b]);
+  assert.deepEqual([s.total, s.done, s.inProgress, s.pendingDocs, s.paidRm], [2, 1, 1, 1, 112.5]);
+  assert.deepEqual(s.stages.map((x) => x.stage), ['Pending ATAP Application', 'ATAP Approved']);
+});
