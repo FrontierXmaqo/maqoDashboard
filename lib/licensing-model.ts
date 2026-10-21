@@ -13,6 +13,9 @@ export const licensingUrl = (c: LicensingCategory) => {
   return `https://bsgyt70achks.sg.larksuite.com/base/${base}?table=${table}&view=${view}`;
 };
 
+/** One record's card in Lark. */
+export const licenceRecordUrl = (c: LicensingCategory, recordId: string) => `${licensingUrl(c)}&record=${recordId}`;
+
 /** Resi ATAP Application Status options, in the order the process runs. Unknown options are listed after these. */
 export const ATAP_STAGES = ['Pending Declaration Form', 'Pending Signed Declaration Form', 'Pending ATAP Application', 'Submitted ATAP Application', 'Pending eATAP Payment', 'eATAP Payment Done', 'Pending SEDA Approval', 'ATAP Approved'];
 export const ATAP_DONE = 'ATAP Approved';

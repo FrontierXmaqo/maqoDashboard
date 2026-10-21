@@ -1,27 +1,65 @@
 'use client';
 
 import { useState } from 'react';
-import { AUTHORITIES, ATAP_DONE, NOT_STARTED, STALE_DAYS, daysSince, isApproved, isStale, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
+import { ATAP_DONE, ATAP_STAGES, AUTHORITIES, NOT_STARTED, STALE_DAYS, daysSince, isApproved, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
 import type { Tone } from '../../lib/model';
 import type { SalesData } from '../../lib/sales-model';
-import { Avatar, NotSet, Pill, Seg } from '../ui';
-import { Kpi, LarkLink, SalesWarnings, kwp, rm } from './SalesBits';
+import { NotSet, Pill, Seg } from '../ui';
+import { Kpi, LarkLink, SalesWarnings } from './SalesBits';
 
 type Cat = 'All' | LicensingCategory;
 
 const tone = (s: string): Tone => (!s ? 'n' : s === ATAP_DONE || isApproved(s) ? 'g' : /reject|not/i.test(s) ? 'r' : /submit|seda approval/i.test(s) ? 'b' : 'a');
-const St = ({ s }: { s: string }) => (s ? <Pill tone={tone(s)}>{s}</Pill> : <NotSet />);
-const klDate = (ms: number) => new Date(ms).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kuala_Lumpur' });
-const Sales = ({ l }: { l: Licence }) => (l.sales[0] ? <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><Avatar sm p={l.sales[0]} />{l.sales[0].name}</span> : <NotSet />);
-const Ext = ({ href, label }: { href: string; label: string }) => (href ? <a href={href} target="_blank" rel="noopener noreferrer">Open<span className="sr"> {label} (new tab)</span></a> : <NotSet />);
+const stageNo = (l: Licence) => ATAP_STAGES.indexOf(l.atapStatus) + 1; // 0 = not set or unknown
 
-/** Licensing applications. Resi follows the ATAP table, C&I follows the per-authority table in Lark. */
+/** Resi: one dot per ATAP step, filled up to the current step. */
+function Steps({ l }: { l: Licence }) {
+  const n = stageNo(l);
+  return (
+    <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }} role="img" aria-label={`Step ${n} of ${ATAP_STAGES.length}`}>
+      {ATAP_STAGES.map((s, i) => <span key={s} className={`dot d-${i < n ? (l.done ? 'g' : 'b') : 'n'}`} title={s} />)}
+      <span className="muted num" style={{ marginLeft: 4 }}>{n}/{ATAP_STAGES.length}</span>
+    </span>
+  );
+}
+
+/** C&I: one chip per authority. */
+const MARK: Record<Tone, string> = { g: '✓', b: '◐', a: '◐', r: '✕', n: '○' };
+function Authorities({ l }: { l: Licence }) {
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+      {AUTHORITIES.map((a) => {
+        const x = l.authorities.find((y) => y.name === a);
+        if (!x) return <span key={a} className="pill t-n" style={{ opacity: 0.55 }} title={`${a}: not needed`}>{a} –</span>;
+        const t = tone(x.status);
+        return <span key={a} className={`pill t-${t}`} title={`${a}: ${x.status || NOT_STARTED}`}>{a} {MARK[t]}<span className="sr"> {x.status || NOT_STARTED}</span></span>;
+      })}
+    </span>
+  );
+}
+
+const Open = ({ l }: { l: Licence }) => (
+  <a className="btn" style={{ textDecoration: 'none', whiteSpace: 'nowrap' }} href={licenceRecordUrl(l.category, l.id)} target="_blank" rel="noopener noreferrer">
+    Open in Lark <span aria-hidden="true">↗</span><span className="sr"> {l.client} (new tab)</span>
+  </a>
+);
+
+const Client = ({ l }: { l: Licence }) => (
+  <td>
+    <div>{l.client}</div>
+    {l.sales[0] && <div className="muted">{l.sales[0].name}</div>}
+  </td>
+);
+
+/** Licensing progress for Resi (ATAP steps) and C&I (SEDA, ST, TNB, MGTC). Details live in Lark. */
 export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
   const [cat, setCat] = useState<Cat>('All');
+  const [step, setStep] = useState<string | null>(null);
   const now = data.generatedAt;
   const list = data.rows.filter((l) => cat === 'All' || l.category === cat);
-  const resi = list.filter((l) => l.category === 'Resi');
-  // Stuck first, then the longest without an update.
+  // Open cases first; least progressed (Resi) or longest without an update (C&I) at the top.
+  const resiAll = list.filter((l) => l.category === 'Resi');
+  const resi = resiAll.filter((l) => !step || l.atapStatus === step).sort((a, b) => Number(a.done) - Number(b.done) || stageNo(a) - stageNo(b));
   const ci = list.filter((l) => l.category === 'C&I').sort((a, b) => Number(a.done) - Number(b.done) || (a.lastUpdate ?? 0) - (b.lastUpdate ?? 0));
   const s = licensingSummary(list, now);
   const showResi = cat !== 'C&I';
@@ -31,7 +69,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
       <div className="topbar">
         <div>
           <h1 className="title">Licensing</h1>
-          <p className="muted">Residential ATAP and C&I authority approvals (SEDA, ST, TNB, MGTC), read live from Lark.</p>
+          <p className="muted">Where every application stands. Open a client in Lark for documents and details.</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Seg<Cat> label="Category" value={cat} onChange={setCat} options={[['All', 'All'], ['Resi', 'Resi'], ['C&I', 'C&I']]} />
@@ -41,34 +79,37 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
       </div>
       <SalesWarnings list={data.warnings} />
       <div className="kpis k4">
-        <Kpi big v={s.inProgress} l="Applications in progress" />
+        <Kpi big v={s.inProgress} l="In progress" />
         <Kpi v={s.done} l="Fully approved" />
         {showResi && <Kpi v={s.pendingDocs} l="Resi documents pending" />}
         {showCi && <Kpi v={s.stale} l={`C&I no update ${STALE_DAYS}+ days`} />}
-        {cat === 'Resi' && <Kpi v={rm(s.paidRm)} l="eATAP payments" />}
-        {cat === 'C&I' && <Kpi v={kwp(s.kwp)} l="C&I capacity" />}
       </div>
 
       {showResi && (
-        <section className="card" aria-labelledby="h-stage">
-          <h2 id="h-stage">Resi: where ATAP applications are</h2>
-          <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))' }}>
-            {s.stages.length ? s.stages.map((x) => <Kpi key={x.stage} v={x.n} l={x.stage} />) : <p className="muted">No Resi applications yet.</p>}
+        <section className="card" aria-labelledby="h-resi">
+          <h2 id="h-resi">Resi ATAP progress ({resiAll.length})</h2>
+          <p className="muted">Click a step to list only the clients at that step.</p>
+          <div className="kpis" role="group" aria-label="Filter by ATAP step" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
+            {ATAP_STAGES.map((st, i) => (
+              <button key={st} type="button" className={`kpi${step === st ? ' big' : ''}`} aria-pressed={step === st} onClick={() => setStep(step === st ? null : st)}>
+                <span className="muted">{i + 1}. {st}</span>
+                <span className="v num">{s.stages.find((x) => x.stage === st)?.n ?? 0}</span>
+              </button>
+            ))}
           </div>
-        </section>
-      )}
-
-      {showCi && (
-        <section className="card" aria-labelledby="h-auth">
-          <h2 id="h-auth">C&I: status by authority</h2>
+          {step && <div className="row"><span className="muted">Showing {resi.length} at “{step}”.</span><button type="button" className="btn sm" onClick={() => setStep(null)}>Show all steps</button></div>}
           <div className="tbl">
             <table>
-              <thead><tr><th>Authority</th><th>Cases by status</th></tr></thead>
+              <thead><tr><th>Client</th><th>Progress</th><th>Current step</th><th>Submitted</th><th><span className="sr">Lark</span></th></tr></thead>
               <tbody>
-                {s.authorities.map((a) => (
-                  <tr key={a.name}>
-                    <th scope="row">{a.name}{a.name === 'MGTC' && <span className="muted"> (where needed)</span>}</th>
-                    <td><span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{a.statuses.length ? a.statuses.map((x) => <Pill key={x.status} tone={tone(x.status === NOT_STARTED ? '' : x.status)}>{x.status}: {x.n}</Pill>) : <NotSet />}</span></td>
+                {resi.length === 0 && <tr><td colSpan={5} className="empty">{step ? 'No clients at this step.' : 'No Resi applications.'}</td></tr>}
+                {resi.map((l) => (
+                  <tr key={l.id}>
+                    <Client l={l} />
+                    <td><Steps l={l} /></td>
+                    <td>{l.atapStatus ? <Pill tone={tone(l.atapStatus)}>{l.atapStatus}</Pill> : <NotSet />}</td>
+                    <td className="num">{l.submittedAt == null ? <NotSet /> : `${daysSince(l.submittedAt, now)} days ago`}</td>
+                    <td><Open l={l} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -79,63 +120,34 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
 
       {showCi && (
         <section className="card" aria-labelledby="h-ci">
-          <h2 id="h-ci">C&I applications ({ci.length}), longest without update first</h2>
+          <h2 id="h-ci">C&I approvals progress ({ci.length})</h2>
+          <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
+            {s.authorities.map((a) => {
+              const counted = a.statuses.reduce((t, x) => t + x.n, 0);
+              const ok = a.statuses.filter((x) => isApproved(x.status)).reduce((t, x) => t + x.n, 0);
+              return <Kpi key={a.name} v={`${ok}/${counted}`} l={`${a.name} approved`} />;
+            })}
+          </div>
           <div className="tbl">
             <table>
-              <thead><tr><th>Client</th><th>Type</th><th>kWp</th><th>Sales PIC</th>{AUTHORITIES.map((a) => <th key={a}>{a}</th>)}<th>Last update</th><th>Remarks</th><th>Chat</th></tr></thead>
+              <thead><tr><th>Client</th><th>SEDA · ST · TNB · MGTC</th><th>Last update</th><th><span className="sr">Lark</span></th></tr></thead>
               <tbody>
-                {ci.length === 0 && <tr><td colSpan={11} className="empty">No C&I applications.</td></tr>}
+                {ci.length === 0 && <tr><td colSpan={4} className="empty">No C&I applications.</td></tr>}
                 {ci.map((l) => {
                   const d = daysSince(l.lastUpdate, now);
                   return (
                     <tr key={l.id}>
-                      <td>{l.client}</td>
-                      <td>{l.type || <NotSet />}</td>
-                      <td className="num">{l.kwp ?? <NotSet />}</td>
-                      <td><Sales l={l} /></td>
-                      {AUTHORITIES.map((a) => {
-                        const x = l.authorities.find((y) => y.name === a);
-                        return <td key={a}>{x ? (x.status ? <St s={x.status} /> : <Pill tone="n">{NOT_STARTED}</Pill>) : <span className="muted">Not needed</span>}</td>;
-                      })}
-                      <td className="num">{d == null ? <NotSet /> : isStale(l, now) ? <Pill tone="r">{d} days ago</Pill> : `${d} days ago`}</td>
-                      <td>{l.remarks || <NotSet />}</td>
-                      <td><Ext href={l.chatLink} label="WhatsApp group" /></td>
+                      <Client l={l} />
+                      <td><Authorities l={l} /></td>
+                      <td className="num">{l.done ? <Pill tone="g">All approved</Pill> : d == null ? <NotSet /> : isStale(l, now) ? <Pill tone="r">{d} days ago</Pill> : `${d} days ago`}</td>
+                      <td><Open l={l} /></td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          <p className="muted">Fully approved = every authority that applies is approved. No update {STALE_DAYS}+ days = the latest CAS, SEDA, ST, TNB or MGTC date of update is older than that.</p>
-        </section>
-      )}
-
-      {showResi && (
-        <section className="card" aria-labelledby="h-resi">
-          <h2 id="h-resi">Resi applications ({resi.length})</h2>
-          <div className="tbl">
-            <table>
-              <thead><tr><th>Client</th><th>Project ID</th><th>Documents</th><th>ATAP status</th><th>Submitted</th><th>eATAP payment</th><th>Sales PIC</th><th>Licensing PIC</th><th>Declaration</th><th>Signed form</th><th>ATAP cert</th></tr></thead>
-              <tbody>
-                {resi.length === 0 && <tr><td colSpan={11} className="empty">No Resi applications.</td></tr>}
-                {resi.map((l) => (
-                  <tr key={l.id}>
-                    <td>{l.client}</td>
-                    <td className="num">{l.projectId || <NotSet />}</td>
-                    <td><St s={l.documentsStatus} /></td>
-                    <td><St s={l.atapStatus} /></td>
-                    <td className="num">{l.submittedAt == null ? <NotSet /> : `${klDate(l.submittedAt)} (${daysSince(l.submittedAt, now)} days)`}</td>
-                    <td className="num">{l.payment != null ? rm(l.payment) : <NotSet />}</td>
-                    <td><Sales l={l} /></td>
-                    <td>{l.licensingPic[0]?.name ?? <NotSet />}</td>
-                    <td><Ext href={l.declarationLink} label="declaration link" /></td>
-                    <td>{l.signedForm ? '✓' : <NotSet />}</td>
-                    <td>{l.cert ? '✓' : <NotSet />}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <p className="muted">✓ approved · ◐ in progress · ✕ rejected · ○ not started · – not needed. Hover a chip for the exact status. Red = no update in {STALE_DAYS}+ days.</p>
         </section>
       )}
     </>
