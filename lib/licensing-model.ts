@@ -1,4 +1,4 @@
-// Licensing (ATAP) applications for Residential and C&I. Client-safe, no Lark access.
+// Licensing applications for Residential (ATAP) and C&I (SEDA, ST, TNB, MGTC). Client-safe, no Lark access.
 
 import type { PersonRef } from './types.ts';
 
@@ -13,40 +13,71 @@ export const licensingUrl = (c: LicensingCategory) => {
   return `https://bsgyt70achks.sg.larksuite.com/base/${base}?table=${table}&view=${view}`;
 };
 
-/** ATAP Application Status options, in the order the process runs. Unknown options are listed after these. */
+/** Resi ATAP Application Status options, in the order the process runs. Unknown options are listed after these. */
 export const ATAP_STAGES = ['Pending Declaration Form', 'Pending Signed Declaration', 'Pending ATAP Application', 'Submitted ATAP Application', 'Pending eATAP Payment', 'eATAP Payment Done', 'Pending SEDA Approval', 'ATAP Approved'];
 export const ATAP_DONE = 'ATAP Approved';
+
+/** C&I authorities with a status field, in the order the C&I table lists them. */
+export const AUTHORITIES = ['SEDA', 'ST', 'TNB', 'MGTC'] as const;
+export type Authority = (typeof AUTHORITIES)[number];
+
+/** A C&I case with no update on any authority for this long counts as stuck. */
+export const STALE_DAYS = 21;
+const DAY = 86_400_000;
+
+export const isApproved = (s: string) => /approved|done|completed/i.test(s) && !/not|reject/i.test(s);
 
 export type Licence = {
   id: string;
   category: LicensingCategory;
   client: string;
+  sales: PersonRef[];
+  remarks: string;
+  done: boolean;
+  /** Latest "date of update" across authorities (C&I only), ms. */
+  lastUpdate: number | null;
+  // Resi
   projectId: string;
   documentsStatus: string;
   atapStatus: string;
-  /** RM, null when not paid or not set. */
   payment: number | null;
-  sales: PersonRef[];
-  chatGroup: string;
   declarationLink: string;
   signedForm: number;
   cert: number;
+  // C&I. Authorities that don't apply (MGTC not needed) are left out.
+  type: string;
+  kwp: number | null;
+  authorities: { name: Authority; status: string; at: number | null }[];
+  chatLink: string;
 };
 
-export type LicensingStage = { stage: string; n: number };
+export const daysSince = (ms: number | null, now: number) => (ms == null ? null : Math.floor((now - ms) / DAY));
+export const isStale = (l: Licence, now: number) => l.category === 'C&I' && !l.done && (daysSince(l.lastUpdate, now) ?? Infinity) >= STALE_DAYS;
 
-export function licensingSummary(list: Licence[]) {
-  const done = list.filter((l) => l.atapStatus === ATAP_DONE).length;
+export function licensingSummary(list: Licence[], now: number) {
+  const resi = list.filter((l) => l.category === 'Resi');
+  const ci = list.filter((l) => l.category === 'C&I');
   const counts = new Map<string, number>();
-  for (const l of list) counts.set(l.atapStatus || 'Not set', (counts.get(l.atapStatus || 'Not set') ?? 0) + 1);
-  const known = ATAP_STAGES.filter((s) => counts.has(s));
+  for (const l of resi) counts.set(l.atapStatus || 'Not set', (counts.get(l.atapStatus || 'Not set') ?? 0) + 1);
   const other = [...counts.keys()].filter((s) => !ATAP_STAGES.includes(s)).sort();
+  const done = list.filter((l) => l.done).length;
   return {
     total: list.length,
     done,
     inProgress: list.length - done,
-    pendingDocs: list.filter((l) => l.documentsStatus.toLowerCase().startsWith('pending')).length,
-    paidRm: list.reduce((s, l) => s + (l.payment ?? 0), 0),
-    stages: [...known, ...other].map((stage): LicensingStage => ({ stage, n: counts.get(stage) ?? 0 })),
+    pendingDocs: resi.filter((l) => l.documentsStatus.toLowerCase().startsWith('pending')).length,
+    stale: ci.filter((l) => isStale(l, now)).length,
+    paidRm: resi.reduce((s, l) => s + (l.payment ?? 0), 0),
+    kwp: ci.reduce((s, l) => s + (l.kwp ?? 0), 0),
+    stages: [...ATAP_STAGES.filter((s) => counts.has(s)), ...other].map((stage) => ({ stage, n: counts.get(stage) ?? 0 })),
+    /** Per authority, how many C&I cases sit at each status, most common first. */
+    authorities: AUTHORITIES.map((name) => {
+      const m = new Map<string, number>();
+      for (const l of ci) {
+        const a = l.authorities.find((x) => x.name === name);
+        if (a) m.set(a.status || 'Not set', (m.get(a.status || 'Not set') ?? 0) + 1);
+      }
+      return { name, statuses: [...m.entries()].sort((a, b) => b[1] - a[1]).map(([status, n]) => ({ status, n })) };
+    }),
   };
 }
