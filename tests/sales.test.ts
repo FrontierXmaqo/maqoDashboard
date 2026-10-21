@@ -69,3 +69,30 @@ test('closed deals are counted per Sales PIC, whatever the status spacing', () =
   assert.equal(m.get('ou_a'), 2);
   assert.equal(m.get('ou_b'), 1);
 });
+
+test('licensing: resi ATAP rows and C&I per-authority rows, summary and stale flag', async () => {
+  const { mapResiLicence, mapCiLicence } = await import('../lib/data/licensing.ts');
+  const { licensingSummary, isStale } = await import('../lib/licensing-model.ts');
+  const day = 86_400_000;
+  const now = 100 * day;
+  const r = mapResiLicence({ record_id: 'l1', fields: { 'Client Name': [{ type: 'text', text: 'Tan' }], 'Documents Status': 'Pending Documents', 'ATAP Application Status': 'ATAP Approved', 'eATAP Payment': 112.5, 'Sales PIC': { type: 11, value: amy }, 'Submit Declaration Link': { type: 1, value: [{ type: 'text', text: 'https://x.test' }] }, 'Signed Declaration Form': { type: 17, value: [{ name: 's.pdf' }] }, 'ATAP Cert': [{ name: 'c.pdf' }], 'ATAP Submission Date': 5 } });
+  // Lookups (Sales PIC, Signed Declaration Form) and the link formula are unwrapped.
+  assert.deepEqual([r.client, r.declarationLink, r.cert, r.signedForm, r.sales[0].openId, r.submittedAt, r.done], ['Tan', 'https://x.test', 1, 1, 'ou_a', 5, true]);
+  // MGTC not needed, all three approved -> done. Truncated field names are found by prefix.
+  const a = mapCiLicence({ record_id: 'c1', fields: { 'CLIENT NAME 1': 'UV Sdn Bhd', 'MGTC NEEDED ??': 'NO', 'SEDA STATUS': 'APPROVED', 'ST STATUS': 'APPROVED', 'TNB STATUS': 'APPROVED', 'ST DATE OF UPDATE': 90 * day, KWP: [{ type: 'text', text: '997.050' }], 'Link Whatssapp Group': { link: 'https://chat.whatsapp.com/x', text: 'x' } } });
+  assert.equal(a.chatLink, 'https://chat.whatsapp.com/x');
+  // MGTC needed and in progress, last update 30 days ago -> stale.
+  const b = mapCiLicence({ record_id: 'c2', fields: { 'CLIENT NAME 1': 'Acme', 'MGTC NEEDED ??': 'YES', 'SEDA STATUS': 'APPROVED', 'MGTC STATUS': 'IN PROGRESS', 'DATE OF MGTC UPDATE': 70 * day, 'CAS DATE OF UPDATE': 60 * day } });
+  assert.deepEqual(a.authorities.map((x) => x.name), ['SEDA', 'ST', 'TNB']);
+  assert.equal(a.done, true);
+  assert.equal(b.done, false);
+  assert.equal(b.lastUpdate, 70 * day);
+  assert.deepEqual([isStale(a, now), isStale(b, now)], [false, true]);
+  const s = licensingSummary([r, a, b], now);
+  assert.deepEqual([s.total, s.done, s.inProgress, s.pendingDocs, s.stale, s.kwp], [3, 2, 1, 1, 1, 997.05]);
+  assert.equal(mapCiLicence({ record_id: 'c3', fields: { 'CLIENT NAME 1': 'X' } }).authorities.length, 4); // blank MGTC NEEDED counts as needed
+  const { statusRank } = await import('../lib/licensing-model.ts');
+  assert.deepEqual(['APPROVED', 'REJECTED', 'WAITING FOR VERIFICATION', 'SUBMITTED', ''].sort((x, y) => statusRank(x) - statusRank(y)), ['', 'SUBMITTED', 'WAITING FOR VERIFICATION', 'REJECTED', 'APPROVED']);
+  assert.deepEqual(s.authorities.find((x) => x.name === 'MGTC')?.statuses, [{ status: 'IN PROGRESS', n: 1 }]);
+  assert.deepEqual(s.authorities.find((x) => x.name === 'ST')?.statuses, [{ status: 'Not started', n: 1 }, { status: 'APPROVED', n: 1 }]);
+});
