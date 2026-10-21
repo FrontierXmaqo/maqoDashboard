@@ -11,6 +11,8 @@ export const dynamic = 'force-dynamic';
 const SALES_BASES = [
   { label: 'Residential sales', token: 'Ec88b000TaIsdGsEznLl8i2dgve' },
   { label: 'C&I sales', token: 'YLOSbdnx6a53O9sVwCflo8adgad' },
+  { label: 'Resi licensing', token: 'EKRNbzjUhaqyKbsfLYAlAv5Fggc' },
+  { label: 'C&I licensing', token: 'VidWbpYqcalYncsmVIAlPRLYgtg' },
 ];
 
 async function salesBaseLines(): Promise<string[]> {
