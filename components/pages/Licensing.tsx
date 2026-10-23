@@ -99,14 +99,16 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
   const [q, setQ] = useState('');
   const [ciQ, setCiQ] = useState('');
   const [rep, setRep] = useState('');
+  const [auth, setAuth] = useState<string | null>(null);
   const now = data.generatedAt;
   const has = (l: Licence, text: string) => l.client.toLowerCase().includes(text.trim().toLowerCase());
-  const list = data.rows.filter((l) => cat === 'All' || l.category === cat);
+  // Hiding completed also removes them from every count on the page.
+  const list = data.rows.filter((l) => (cat === 'All' || l.category === cat) && !(hideDone && l.done));
   // Open cases first; least progressed (Resi) or longest without an update (C&I) at the top.
   const resiAll = list.filter((l) => l.category === 'Resi');
   const reps = [...new Set(resiAll.flatMap((l) => l.sales.map((p) => p.name)))].sort((a, b) => a.localeCompare(b));
-  const resi = resiAll.filter((l) => (!step || l.atapStatus === step) && !(hideDone && l.done) && has(l, q) && (!rep || l.sales.some((p) => p.name === rep))).sort((a, b) => Number(a.done) - Number(b.done) || stageNo(a) - stageNo(b));
-  const ci = list.filter((l) => l.category === 'C&I' && !(hideDone && l.done) && has(l, ciQ)).sort((a, b) => Number(a.done) - Number(b.done) || (a.lastUpdate ?? 0) - (b.lastUpdate ?? 0));
+  const resi = resiAll.filter((l) => (!step || l.atapStatus === step) && has(l, q) && (!rep || l.sales.some((p) => p.name === rep))).sort((a, b) => Number(a.done) - Number(b.done) || stageNo(a) - stageNo(b));
+  const ci = list.filter((l) => l.category === 'C&I' && has(l, ciQ) && (!auth || l.authorities.some((a) => a.name === auth && !isApproved(a.status)))).sort((a, b) => Number(a.done) - Number(b.done) || (a.lastUpdate ?? 0) - (b.lastUpdate ?? 0));
   const s = licensingSummary(list, now);
   const showResi = cat !== 'C&I';
   const showCi = cat !== 'Resi';
@@ -175,14 +177,21 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
       {showCi && (
         <section className="card" aria-labelledby="h-ci">
           <h2 id="h-ci">C&I approvals progress ({ci.length})</h2>
+          <p className="muted">Click an authority to list only the cases still waiting on it.</p>
           <div className="row"><input className="inp" style={{ maxWidth: 240 }} type="search" aria-label="Search C&I" placeholder="Search client" value={ciQ} onChange={(e) => setCiQ(e.target.value)} /></div>
           <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
             {s.authorities.map((a) => {
               const counted = a.statuses.reduce((t, x) => t + x.n, 0);
               const ok = a.statuses.filter((x) => isApproved(x.status)).reduce((t, x) => t + x.n, 0);
-              return <Kpi key={a.name} v={`${ok}/${counted}`} l={`${a.name} approved`} />;
+              return (
+                <button key={a.name} type="button" className={`kpi${auth === a.name ? ' big' : ''}`} aria-pressed={auth === a.name} onClick={() => setAuth(auth === a.name ? null : a.name)}>
+                  <span className="muted">{a.name} approved</span>
+                  <span className="v num">{ok}/{counted}</span>
+                </button>
+              );
             })}
           </div>
+          {auth && <div className="row"><span className="muted">Showing {ci.length} still waiting on {auth}.</span><button type="button" className="btn sm" onClick={() => setAuth(null)}>Show all</button></div>}
           <CiTable title={`Above ${SMALL_KWP} kWp`} rows={ci.filter((l) => l.size === 'large')} now={now} />
           <CiTable title={`${SMALL_KWP} kWp and below`} rows={ci.filter((l) => l.size === 'small')} now={now} />
           <CiTable title="No category" rows={ci.filter((l) => l.size === 'none')} now={now} />
