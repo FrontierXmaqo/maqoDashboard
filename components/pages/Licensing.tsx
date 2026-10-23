@@ -31,13 +31,13 @@ function Issues({ l }: { l: Licence }) {
   return list.length ? <div style={{ marginTop: 4 }}><span className="pill t-r">Check in Lark</span> <span className="muted">{list.join('. ')}.</span></div> : null;
 }
 
-/** C&I: one chip per authority. */
+/** C&I: one chip per authority needed, in route order, with its date underneath. */
 const MARK: Record<Tone, string> = { g: '✓', b: '◐', a: '◐', r: '✕', n: '○' };
 function Authorities({ l }: { l: Licence }) {
   const ok = l.authorities.filter((a) => isApproved(a.status)).length;
   return (
-    <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-      <span className="muted num">{ok}/{l.authorities.length}</span>
+    <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+      <span className="muted num" style={{ minWidth: 28 }}>{ok}/{l.authorities.length}</span>
       {l.authorities.map((x) => {
         const t = tone(x.status);
         return (
@@ -70,7 +70,8 @@ function CiTable({ title, rows, now }: { title: string; rows: Licence[]; now: nu
     <>
       <h3>{title} ({rows.length})</h3>
       <div className="tbl">
-        <table>
+        <table style={{ tableLayout: 'fixed', minWidth: 900 }}>
+          <colgroup><col style={{ width: '26%' }} /><col style={{ width: '38%' }} /><col style={{ width: '13%' }} /><col style={{ width: '9%' }} /><col style={{ width: '14%' }} /></colgroup>
           <thead><tr><th>Client</th><th>Approved · authorities in order</th><th>Last update</th><th>Days waiting</th><th><span className="sr">Lark</span></th></tr></thead>
           <tbody>
             {rows.length === 0 && <tr><td colSpan={5} className="empty">No C&I applications.</td></tr>}
@@ -185,7 +186,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
           <CiTable title={`Above ${SMALL_KWP} kWp`} rows={ci.filter((l) => l.size === 'large')} now={now} />
           <CiTable title={`${SMALL_KWP} kWp and below`} rows={ci.filter((l) => l.size === 'small')} now={now} />
           <CiTable title="No category" rows={ci.filter((l) => l.size === 'none')} now={now} />
-          <p className="muted">Chips run left to right in the order each authority is processed; SELCO cases skip SEDA. ✓ approved · ◐ in progress · ✕ rejected · ○ not started. Hover a chip for the exact status. Red = no update in {STALE_DAYS}+ days. Size comes from the Lark CATEGORY column (kWp if blank). Cases with neither are under No category and show the full route until a category is set.</p>
+          <p className="muted">Chips run in the order each authority is processed; only the authorities a case needs are shown (SELCO skips SEDA, small systems skip CAS, ST and MGTC). ✓ approved · ◐ in progress · ✕ rejected · ○ not started. Red = no update in {STALE_DAYS}+ days. Size comes from the Lark CATEGORY column (kWp if blank). Cases with neither are under No category and show the full route until a category is set.</p>
         </section>
       )}
     </>
