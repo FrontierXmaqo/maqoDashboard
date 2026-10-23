@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ATAP_DONE, ATAP_STAGES, AUTHORITIES, NOT_STARTED, STALE_DAYS, isApproved, licenceIssues, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
+import { ATAP_DONE, ATAP_STAGES, NOT_STARTED, SMALL_KWP, STALE_DAYS, isApproved, licenceIssues, daysSince, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
 import type { Tone } from '../../lib/model';
 import type { SalesData } from '../../lib/sales-model';
 import { NotSet, Pill, Seg } from '../ui';
@@ -38,11 +38,14 @@ function Authorities({ l }: { l: Licence }) {
   return (
     <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
       <span className="muted num">{ok}/{l.authorities.length}</span>
-      {AUTHORITIES.map((a) => {
-        const x = l.authorities.find((y) => y.name === a);
-        if (!x) return <span key={a} className="pill t-n" style={{ opacity: 0.55 }} title={`${a}: not needed`}>{a} –</span>;
+      {l.authorities.map((x) => {
         const t = tone(x.status);
-        return <span key={a} className={`pill t-${t}`} title={`${a}: ${x.status || NOT_STARTED}`}>{a} {MARK[t]}<span className="sr"> {x.status || NOT_STARTED}</span></span>;
+        return (
+          <span key={x.name} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <span className={`pill t-${t}`} title={`${x.name}: ${x.status || NOT_STARTED}`}>{x.name} {MARK[t]}<span className="sr"> {x.status || NOT_STARTED}</span></span>
+            <span className="muted num" style={{ fontSize: 11 }}>{x.at == null ? '–' : klDate(x.at)}</span>
+          </span>
+        );
       })}
     </span>
   );
@@ -61,16 +64,48 @@ const Client = ({ l }: { l: Licence }) => (
   </td>
 );
 
-/** Licensing progress for Resi (ATAP steps) and C&I (SEDA, ST, TNB, MGTC). Details live in Lark. */
+/** One C&I size group: a row per client, one chip per authority that case needs. */
+function CiTable({ title, rows, now }: { title: string; rows: Licence[]; now: number }) {
+  return (
+    <>
+      <h3>{title} ({rows.length})</h3>
+      <div className="tbl">
+        <table>
+          <thead><tr><th>Client</th><th>Approved · authorities in order</th><th>Last update</th><th>Days waiting</th><th><span className="sr">Lark</span></th></tr></thead>
+          <tbody>
+            {rows.length === 0 && <tr><td colSpan={5} className="empty">No C&I applications.</td></tr>}
+            {rows.map((l) => (
+              <tr key={l.id}>
+                <Client l={l} />
+                <td><Authorities l={l} /></td>
+                <td className="num">{l.done ? <Pill tone="g">All approved</Pill> : l.lastUpdate == null ? <NotSet /> : isStale(l, now) ? <Pill tone="r">{klDate(l.lastUpdate)}</Pill> : klDate(l.lastUpdate)}</td>
+                <td className="num">{l.done ? '–' : l.lastUpdate == null ? <NotSet /> : `${daysSince(l.lastUpdate, now)} d`}</td>
+                <td><Open l={l} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+/** Licensing progress for Resi (ATAP steps) and C&I (CAS, SEDA, ST, TNB, MGTC). Details live in Lark. */
 export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
   const [cat, setCat] = useState<Cat>('All');
   const [step, setStep] = useState<string | null>(null);
+  const [hideDone, setHideDone] = useState(false);
+  const [q, setQ] = useState('');
+  const [ciQ, setCiQ] = useState('');
+  const [rep, setRep] = useState('');
   const now = data.generatedAt;
+  const has = (l: Licence, text: string) => l.client.toLowerCase().includes(text.trim().toLowerCase());
   const list = data.rows.filter((l) => cat === 'All' || l.category === cat);
   // Open cases first; least progressed (Resi) or longest without an update (C&I) at the top.
   const resiAll = list.filter((l) => l.category === 'Resi');
-  const resi = resiAll.filter((l) => !step || l.atapStatus === step).sort((a, b) => Number(a.done) - Number(b.done) || stageNo(a) - stageNo(b));
-  const ci = list.filter((l) => l.category === 'C&I').sort((a, b) => Number(a.done) - Number(b.done) || (a.lastUpdate ?? 0) - (b.lastUpdate ?? 0));
+  const reps = [...new Set(resiAll.flatMap((l) => l.sales.map((p) => p.name)))].sort((a, b) => a.localeCompare(b));
+  const resi = resiAll.filter((l) => (!step || l.atapStatus === step) && !(hideDone && l.done) && has(l, q) && (!rep || l.sales.some((p) => p.name === rep))).sort((a, b) => Number(a.done) - Number(b.done) || stageNo(a) - stageNo(b));
+  const ci = list.filter((l) => l.category === 'C&I' && !(hideDone && l.done) && has(l, ciQ)).sort((a, b) => Number(a.done) - Number(b.done) || (a.lastUpdate ?? 0) - (b.lastUpdate ?? 0));
   const s = licensingSummary(list, now);
   const showResi = cat !== 'C&I';
   const showCi = cat !== 'Resi';
@@ -83,6 +118,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Seg<Cat> label="Category" value={cat} onChange={setCat} options={[['All', 'All'], ['Resi', 'Resi'], ['C&I', 'C&I']]} />
+          <button type="button" className="btn" aria-pressed={hideDone} onClick={() => setHideDone(!hideDone)}>{hideDone ? 'Show completed' : 'Hide completed'}</button>
           {showResi && <LarkLink href={licensingUrl('Resi')}>Resi in Lark</LarkLink>}
           {showCi && <LarkLink href={licensingUrl('C&I')}>C&I in Lark</LarkLink>}
         </div>
@@ -99,6 +135,13 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
         <section className="card" aria-labelledby="h-resi">
           <h2 id="h-resi">Resi ATAP progress ({resiAll.length})</h2>
           <p className="muted">Click a step to list only the clients at that step.</p>
+          <div className="row">
+            <input className="inp" style={{ maxWidth: 240 }} type="search" aria-label="Search Resi" placeholder="Search client" value={q} onChange={(e) => setQ(e.target.value)} />
+            <select className="inp" style={{ maxWidth: 180 }} aria-label="Sales person" value={rep} onChange={(e) => setRep(e.target.value)}>
+              <option value="">All sales</option>
+              {reps.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
           <div className="kpis" role="group" aria-label="Filter by ATAP step" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
             {ATAP_STAGES.map((st, i) => (
               <button key={st} type="button" className={`kpi${step === st ? ' big' : ''}`} aria-pressed={step === st} onClick={() => setStep(step === st ? null : st)}>
@@ -131,6 +174,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
       {showCi && (
         <section className="card" aria-labelledby="h-ci">
           <h2 id="h-ci">C&I approvals progress ({ci.length})</h2>
+          <div className="row"><input className="inp" style={{ maxWidth: 240 }} type="search" aria-label="Search C&I" placeholder="Search client" value={ciQ} onChange={(e) => setCiQ(e.target.value)} /></div>
           <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
             {s.authorities.map((a) => {
               const counted = a.statuses.reduce((t, x) => t + x.n, 0);
@@ -138,25 +182,10 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
               return <Kpi key={a.name} v={`${ok}/${counted}`} l={`${a.name} approved`} />;
             })}
           </div>
-          <div className="tbl">
-            <table>
-              <thead><tr><th>Client</th><th>Approved · SEDA · ST · TNB · MGTC</th><th>Last update</th><th><span className="sr">Lark</span></th></tr></thead>
-              <tbody>
-                {ci.length === 0 && <tr><td colSpan={4} className="empty">No C&I applications.</td></tr>}
-                {ci.map((l) => {
-                  return (
-                    <tr key={l.id}>
-                      <Client l={l} />
-                      <td><Authorities l={l} /></td>
-                      <td className="num">{l.done ? <Pill tone="g">All approved</Pill> : l.lastUpdate == null ? <NotSet /> : isStale(l, now) ? <Pill tone="r">{klDate(l.lastUpdate)}</Pill> : klDate(l.lastUpdate)}</td>
-                      <td><Open l={l} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="muted">Authorities run in parallel, so there is no fixed order. ✓ approved · ◐ in progress · ✕ rejected · ○ not started · – not needed. Hover a chip for the exact status. Red = no update in {STALE_DAYS}+ days.</p>
+          <CiTable title={`Above ${SMALL_KWP} kWp`} rows={ci.filter((l) => l.size === 'large')} now={now} />
+          <CiTable title={`${SMALL_KWP} kWp and below`} rows={ci.filter((l) => l.size === 'small')} now={now} />
+          <CiTable title="No category" rows={ci.filter((l) => l.size === 'none')} now={now} />
+          <p className="muted">Chips run left to right in the order each authority is processed; SELCO cases skip SEDA. ✓ approved · ◐ in progress · ✕ rejected · ○ not started. Hover a chip for the exact status. Red = no update in {STALE_DAYS}+ days. Size comes from the Lark CATEGORY column (kWp if blank). Cases with neither are under No category and show the full route until a category is set.</p>
         </section>
       )}
     </>

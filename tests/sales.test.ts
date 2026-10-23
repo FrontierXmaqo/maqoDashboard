@@ -85,18 +85,23 @@ test('licensing: resi ATAP rows and C&I per-authority rows, summary and stale fl
   assert.equal(licenceIssues(early).length, 1);
   assert.equal(licenceIssues(late)[0], 'Status is past submission but ATAP Submission Date is empty');
   // MGTC not needed, all three approved -> done. Truncated field names are found by prefix.
-  const a = mapCiLicence({ record_id: 'c1', fields: { 'CLIENT NAME 1': 'UV Sdn Bhd', 'MGTC NEEDED ??': 'NO', 'SEDA STATUS': 'APPROVED', 'ST STATUS': 'APPROVED', 'TNB STATUS': 'APPROVED', 'ST DATE OF UPDATE': 90 * day, KWP: [{ type: 'text', text: '997.050' }], 'Link Whatssapp Group': { link: 'https://chat.whatsapp.com/x', text: 'x' } } });
+  const a = mapCiLicence({ record_id: 'c1', fields: { 'CLIENT NAME 1': 'UV Sdn Bhd', 'MGTC NEEDED ??': 'NO', 'CAS WORFLOW': 'Done', 'SEDA STATUS': 'APPROVED', 'ST STATUS': 'APPROVED', 'TNB STATUS': 'APPROVED', 'ST DATE OF UPDATE': 90 * day, KWP: [{ type: 'text', text: '997.050' }], 'Link Whatssapp Group': { link: 'https://chat.whatsapp.com/x', text: 'x' } } });
   assert.equal(a.chatLink, 'https://chat.whatsapp.com/x');
   // MGTC needed and in progress, last update 30 days ago -> stale.
   const b = mapCiLicence({ record_id: 'c2', fields: { 'CLIENT NAME 1': 'Acme', 'MGTC NEEDED ??': 'YES', 'SEDA STATUS': 'APPROVED', 'MGTC STATUS': 'IN PROGRESS', 'DATE OF MGTC UPDATE': 70 * day, 'CAS DATE OF UPDATE': 60 * day } });
-  assert.deepEqual(a.authorities.map((x) => x.name), ['SEDA', 'ST', 'TNB']);
+  assert.deepEqual(a.authorities.map((x) => x.name), ['CAS', 'SEDA', 'ST', 'TNB']);
   assert.equal(a.done, true);
   assert.equal(b.done, false);
   assert.equal(b.lastUpdate, 70 * day);
   assert.deepEqual([isStale(a, now), isStale(b, now)], [false, true]);
   const s = licensingSummary([r, a, b], now);
   assert.deepEqual([s.total, s.done, s.inProgress, s.pendingDocs, s.stale, s.kwp], [3, 2, 1, 1, 1, 997.05]);
-  assert.equal(mapCiLicence({ record_id: 'c3', fields: { 'CLIENT NAME 1': 'X' } }).authorities.length, 4); // blank MGTC NEEDED counts as needed
+  assert.equal(mapCiLicence({ record_id: 'c3', fields: { 'CLIENT NAME 1': 'X' } }).authorities.length, 5); // blank MGTC NEEDED counts as needed
+  const route = (client: string, kwp: string, category?: string) => mapCiLicence({ record_id: 'r', fields: { 'CLIENT NAME 1': client, KWP: kwp, CATEGORY: category } }).authorities.map((x) => x.name).join('>');
+  assert.deepEqual([route('A - SELCO', '500'), route('A', '7.2'), route('A - SELCO', '5')], ['CAS>TNB>ST>MGTC', 'SEDA>TNB', 'TNB']);
+  assert.equal(mapCiLicence({ record_id: 'r', fields: { 'CLIENT NAME 1': 'A' } }).size, 'none');
+  assert.equal(mapCiLicence({ record_id: 'r', fields: { 'CLIENT NAME 1': 'A', 'TYPE OF APPLICATION': 'SELCO', KWP: '5' } }).authorities.length, 1); // SELCO from type column
+  assert.equal(route('A', '500', '<72KWP'), 'SEDA>TNB'); // Lark category wins over kWp
   const { statusRank } = await import('../lib/licensing-model.ts');
   assert.deepEqual(['APPROVED', 'REJECTED', 'WAITING FOR VERIFICATION', 'SUBMITTED', ''].sort((x, y) => statusRank(x) - statusRank(y)), ['', 'SUBMITTED', 'WAITING FOR VERIFICATION', 'REJECTED', 'APPROVED']);
   const { licensingOverview } = await import('../lib/licensing-model.ts');

@@ -1,4 +1,4 @@
-// Licensing applications for Residential (ATAP) and C&I (SEDA, ST, TNB, MGTC). Client-safe, no Lark access.
+// Licensing applications for Residential (ATAP) and C&I (CAS, SEDA, ST, TNB, MGTC). Client-safe, no Lark access.
 
 import type { PersonRef } from './types.ts';
 
@@ -17,12 +17,22 @@ export const licensingUrl = (c: LicensingCategory) => {
 export const licenceRecordUrl = (c: LicensingCategory, recordId: string) => `${licensingUrl(c)}&record=${recordId}`;
 
 /** Resi ATAP Application Status options, in the order the process runs. Unknown options are listed after these. */
-export const ATAP_STAGES = ['Pending Declaration Form', 'Pending Signed Declaration Form', 'Pending ATAP Application', 'Submitted ATAP Application', 'Pending eATAP Payment', 'eATAP Payment Done', 'Pending SEDA Approval', 'ATAP Approved'];
+export const ATAP_STAGES = ['Submitted ATAP Application', 'Pending Signed Declaration Form', 'Pending ATAP Application', 'Pending eATAP Payment', 'eATAP Payment Done', 'Pending SEDA Approval', 'ATAP Approved'];
 export const ATAP_DONE = 'ATAP Approved';
 
-/** C&I authorities with a status field, in the order the C&I table lists them. */
-export const AUTHORITIES = ['SEDA', 'ST', 'TNB', 'MGTC'] as const;
+/** C&I authorities with a status field. */
+export const AUTHORITIES = ['CAS', 'SEDA', 'ST', 'TNB', 'MGTC'] as const;
 export type Authority = (typeof AUTHORITIES)[number];
+
+/** Systems up to this size follow the Resi route (no CAS, ST or MGTC). */
+export const SMALL_KWP = 7.2;
+export const isSelco = (client: string) => /selco/i.test(client);
+
+/** Authorities a C&I case needs, in the order they run. SELCO cases skip SEDA. */
+export function authorityRoute(small: boolean, selco: boolean): Authority[] {
+  if (small) return selco ? ['TNB'] : ['SEDA', 'TNB'];
+  return selco ? ['CAS', 'TNB', 'ST', 'MGTC'] : ['CAS', 'SEDA', 'ST', 'TNB', 'MGTC'];
+}
 
 /** A C&I case with no update on any authority for this long counts as stuck. */
 export const STALE_DAYS = 21;
@@ -66,19 +76,23 @@ export type Licence = {
   // C&I. Authorities that don't apply (MGTC not needed) are left out.
   type: string;
   kwp: number | null;
+  /** Lark CATEGORY (>72KWP / <72KWP), or kWp when that is blank. 'none' when neither is set. */
+  size: 'large' | 'small' | 'none';
   authorities: { name: Authority; status: string; at: number | null }[];
   chatLink: string;
 };
 
-const SUBMITTED_STEP = ATAP_STAGES.indexOf('Submitted ATAP Application') + 1;
+// Statuses that come before the application is submitted; the others are at or past submission.
+const PRE_SUBMIT = ['Pending Signed Declaration Form', 'Pending ATAP Application'];
 
 /** Resi rows whose Lark data contradicts its own status, so the team can fix them in Lark. */
 export function licenceIssues(l: Licence): string[] {
   if (l.category !== 'Resi') return [];
-  const step = ATAP_STAGES.indexOf(l.atapStatus) + 1;
+  const known = ATAP_STAGES.includes(l.atapStatus);
+  const pre = PRE_SUBMIT.includes(l.atapStatus);
   const out: string[] = [];
-  if (step >= SUBMITTED_STEP && l.submittedAt == null) out.push('Status is past submission but ATAP Submission Date is empty');
-  if (step > 0 && step < SUBMITTED_STEP && l.submittedAt != null) out.push('Has an ATAP Submission Date but status is before submission');
+  if (known && !pre && l.submittedAt == null) out.push('Status is past submission but ATAP Submission Date is empty');
+  if (pre && l.submittedAt != null) out.push('Has an ATAP Submission Date but status is before submission');
   if (l.done && l.documentsStatus.toLowerCase().startsWith('pending')) out.push('ATAP approved but Documents Status is still pending');
   return out;
 }

@@ -2,7 +2,7 @@
 // Never throws: a table that can't be read becomes a warning and an empty list.
 
 import { READ_CACHE_SECONDS } from '../../config/app.ts';
-import { AUTHORITIES, ATAP_DONE, LICENSING_BASES, isApproved, type Licence, type LicensingCategory } from '../licensing-model.ts';
+import { ATAP_DONE, LICENSING_BASES, authorityRoute, isApproved, isSelco, SMALL_KWP, type Licence, type LicensingCategory } from '../licensing-model.ts';
 import type { SalesData } from '../sales-model.ts';
 import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
 import { cached } from './cache.ts';
@@ -39,7 +39,7 @@ const files = (v: unknown) => {
   return Array.isArray(x) ? x.length : 0;
 };
 
-const EMPTY = { projectId: '', submittedAt: null, licensingPic: [], documentsStatus: '', atapStatus: '', payment: null, declarationLink: '', signedForm: 0, cert: 0, type: '', kwp: null, authorities: [], chatLink: '', lastUpdate: null };
+const EMPTY = { projectId: '', submittedAt: null, licensingPic: [], documentsStatus: '', atapStatus: '', payment: null, declarationLink: '', signedForm: 0, cert: 0, type: '', kwp: null, size: 'none' as const, authorities: [], chatLink: '', lastUpdate: null };
 
 export function mapResiLicence(rec: LarkRecord): Licence {
   const f = rec.fields ?? {};
@@ -64,29 +64,36 @@ export function mapResiLicence(rec: LarkRecord): Licence {
   };
 }
 
-const DATE_FIELD: Record<string, string> = { SEDA: 'SEDA DATE OF UPDATE', ST: 'ST DATE OF UPDATE', TNB: 'TNB DATE OF UPDATE', MGTC: 'DATE OF MGTC UPDATE' };
+const DATE_FIELD: Record<string, string> = { CAS: 'CAS DATE OF UPDATE', SEDA: 'SEDA DATE OF UPDATE', ST: 'ST DATE OF UPDATE', TNB: 'TNB DATE OF UPDATE', MGTC: 'DATE OF MGTC UPDATE' };
 
 export function mapCiLicence(rec: LarkRecord): Licence {
   const f = rec.fields ?? {};
   // Blank counts as needed: the team marks NO where MGTC does not apply.
   const mgtcNeeded = (single(get(f, 'MGTC NEEDED')) ?? '').toUpperCase() !== 'NO';
-  const authorities = AUTHORITIES.filter((a) => a !== 'MGTC' || mgtcNeeded).map((name) => ({
+  const client = display(get(f, 'CLIENT NAME 1', 'CLIENT NAME'));
+  const kwp = num(text(get(f, 'KWP')).replace(/,/g, ''));
+  const category = single(get(f, 'CATEGORY')) ?? '';
+  const size = category ? (category.trim().startsWith('<') ? 'small' : 'large') : kwp == null ? 'none' : kwp <= SMALL_KWP ? 'small' : 'large';
+  const type = display(get(f, 'TYPE OF APPLICATION'));
+  const authorities = authorityRoute(size === 'small', isSelco(client) || isSelco(type)).filter((a) => a !== 'MGTC' || mgtcNeeded).map((name) => ({
     name,
-    status: single(get(f, `${name} STATUS`)) ?? '',
+    // The CAS column in Lark is spelled "CAS WORFLOW".
+    status: single(name === 'CAS' ? get(f, 'CAS WORFLOW', 'CAS WORKFLOW', 'CAS STATUS') : get(f, `${name} STATUS`)) ?? '',
     at: datetime(get(f, DATE_FIELD[name])),
   }));
-  const dates = [...authorities.map((a) => a.at), datetime(get(f, 'CAS DATE OF UPDATE'))].filter((d): d is number => d != null);
+  const dates = authorities.map((a) => a.at).filter((d): d is number => d != null);
   return {
     ...EMPTY,
     id: rec.record_id,
     category: 'C&I',
-    client: display(get(f, 'CLIENT NAME 1', 'CLIENT NAME')),
+    client,
     sales: users(get(f, 'SALES PIC')),
     remarks: text(get(f, 'Remark apa jadi', 'REMARKS')),
     done: authorities.length > 0 && authorities.every((a) => isApproved(a.status)),
     lastUpdate: dates.length ? Math.max(...dates) : null,
-    type: display(get(f, 'TYPE OF APPLICATION')),
-    kwp: num(text(get(f, 'KWP')).replace(/,/g, '')),
+    type,
+    kwp,
+    size,
     authorities,
     chatLink: url(get(f, 'Link Whatssapp Group', 'Link Whatsapp Group')),
   };
