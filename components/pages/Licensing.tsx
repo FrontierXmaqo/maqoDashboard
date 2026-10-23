@@ -99,13 +99,13 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
   const [ciQ, setCiQ] = useState('');
   const [rep, setRep] = useState('');
   const now = data.generatedAt;
-  const has = (l: Licence, text: string, sales: boolean) => !text.trim() || [l.client, ...(sales ? l.sales.map((p) => p.name) : [])].some((t) => t.toLowerCase().includes(text.trim().toLowerCase()));
+  const has = (l: Licence, text: string) => l.client.toLowerCase().includes(text.trim().toLowerCase());
   const list = data.rows.filter((l) => cat === 'All' || l.category === cat);
   // Open cases first; least progressed (Resi) or longest without an update (C&I) at the top.
   const resiAll = list.filter((l) => l.category === 'Resi');
   const reps = [...new Set(resiAll.flatMap((l) => l.sales.map((p) => p.name)))].sort((a, b) => a.localeCompare(b));
-  const resi = resiAll.filter((l) => (!step || l.atapStatus === step) && !(hideDone && l.done) && has(l, q, true) && (!rep || l.sales.some((p) => p.name === rep))).sort((a, b) => Number(a.done) - Number(b.done) || stageNo(a) - stageNo(b));
-  const ci = list.filter((l) => l.category === 'C&I' && !(hideDone && l.done) && has(l, ciQ, false)).sort((a, b) => Number(a.done) - Number(b.done) || (a.lastUpdate ?? 0) - (b.lastUpdate ?? 0));
+  const resi = resiAll.filter((l) => (!step || l.atapStatus === step) && !(hideDone && l.done) && has(l, q) && (!rep || l.sales.some((p) => p.name === rep))).sort((a, b) => Number(a.done) - Number(b.done) || stageNo(a) - stageNo(b));
+  const ci = list.filter((l) => l.category === 'C&I' && !(hideDone && l.done) && has(l, ciQ)).sort((a, b) => Number(a.done) - Number(b.done) || (a.lastUpdate ?? 0) - (b.lastUpdate ?? 0));
   const s = licensingSummary(list, now);
   const showResi = cat !== 'C&I';
   const showCi = cat !== 'Resi';
@@ -136,7 +136,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
           <h2 id="h-resi">Resi ATAP progress ({resiAll.length})</h2>
           <p className="muted">Click a step to list only the clients at that step.</p>
           <div className="row">
-            <input className="inp" style={{ maxWidth: 240 }} type="search" aria-label="Search Resi" placeholder="Search client or sales person" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input className="inp" style={{ maxWidth: 240 }} type="search" aria-label="Search Resi" placeholder="Search client" value={q} onChange={(e) => setQ(e.target.value)} />
             <select className="inp" style={{ maxWidth: 180 }} aria-label="Sales person" value={rep} onChange={(e) => setRep(e.target.value)}>
               <option value="">All sales</option>
               {reps.map((r) => <option key={r} value={r}>{r}</option>)}
