@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ATAP_DONE, ATAP_STAGES, AUTHORITIES, NOT_STARTED, SMALL_KWP, STALE_DAYS, isApproved, licenceIssues, daysSince, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Authority, type Licence, type LicensingCategory } from '../../lib/licensing-model';
+import { ATAP_DONE, ATAP_STAGES, AUTHORITIES, NOT_STARTED, SMALL_KWP, STALE_DAYS, isApproved, licenceIssues, daysSince, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
 import type { Tone } from '../../lib/model';
 import type { SalesData } from '../../lib/sales-model';
 import { NotSet, Pill, Seg } from '../ui';
@@ -31,17 +31,26 @@ function Issues({ l }: { l: Licence }) {
   return list.length ? <div style={{ marginTop: 4 }}><span className="pill t-r">Check in Lark</span> <span className="muted">{list.join('. ')}.</span></div> : null;
 }
 
-/** C&I: one cell per authority, in fixed columns so every case lines up. */
+/** C&I: the old chip layout, but every authority has its own fixed slot so chips line up from row to row. */
 const MARK: Record<Tone, string> = { g: '✓', b: '◐', a: '◐', r: '✕', n: '○' };
-function AuthCell({ l, name }: { l: Licence; name: Authority }) {
-  const x = l.authorities.find((y) => y.name === name);
-  if (!x) return <td className="muted" style={{ textAlign: 'center' }} title={`${name}: not needed`}>–</td>;
-  const t = tone(x.status);
+const SLOTS = { display: 'grid', gridTemplateColumns: `36px repeat(${AUTHORITIES.length}, 92px)`, gap: 6, alignItems: 'start' } as const;
+function Authorities({ l }: { l: Licence }) {
+  const ok = l.authorities.filter((a) => isApproved(a.status)).length;
   return (
-    <td style={{ textAlign: 'center' }}>
-      <span className={`pill t-${t}`} title={`${name}: ${x.status || NOT_STARTED}`}>{MARK[t]} {x.status || NOT_STARTED}</span>
-      <div className="muted num" style={{ fontSize: 11, marginTop: 2 }}>{x.at == null ? '–' : klDate(x.at)}</div>
-    </td>
+    <div style={SLOTS}>
+      <span className="muted num">{ok}/{l.authorities.length}</span>
+      {AUTHORITIES.map((name) => {
+        const x = l.authorities.find((y) => y.name === name);
+        if (!x) return <span key={name} />;
+        const t = tone(x.status);
+        return (
+          <span key={name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <span className={`pill t-${t}`} title={`${name}: ${x.status || NOT_STARTED}`}>{name} {MARK[t]}<span className="sr"> {x.status || NOT_STARTED}</span></span>
+            <span className="muted num" style={{ fontSize: 11 }}>{x.at == null ? '–' : klDate(x.at)}</span>
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
@@ -65,14 +74,13 @@ function CiTable({ title, rows, now }: { title: string; rows: Licence[]; now: nu
       <h3>{title} ({rows.length})</h3>
       <div className="tbl">
         <table>
-          <thead><tr><th>Client</th><th>Approved</th>{AUTHORITIES.map((a) => <th key={a} style={{ textAlign: 'center' }}>{a}</th>)}<th>Last update</th><th>Days waiting</th><th><span className="sr">Lark</span></th></tr></thead>
+          <thead><tr><th>Client</th><th><div style={SLOTS}><span>Done</span>{AUTHORITIES.map((a) => <span key={a} style={{ textAlign: 'center' }}>{a}</span>)}</div></th><th>Last update</th><th>Days waiting</th><th><span className="sr">Lark</span></th></tr></thead>
           <tbody>
-            {rows.length === 0 && <tr><td colSpan={9} className="empty">No C&I applications.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={5} className="empty">No C&I applications.</td></tr>}
             {rows.map((l) => (
               <tr key={l.id}>
                 <Client l={l} />
-                <td className="num">{l.authorities.filter((a) => isApproved(a.status)).length}/{l.authorities.length}</td>
-                {AUTHORITIES.map((a) => <AuthCell key={a} l={l} name={a} />)}
+                <td><Authorities l={l} /></td>
                 <td className="num">{l.done ? <Pill tone="g">All approved</Pill> : l.lastUpdate == null ? <NotSet /> : isStale(l, now) ? <Pill tone="r">{klDate(l.lastUpdate)}</Pill> : klDate(l.lastUpdate)}</td>
                 <td className="num">{l.done ? '–' : l.lastUpdate == null ? <NotSet /> : `${daysSince(l.lastUpdate, now)} d`}</td>
                 <td><Open l={l} /></td>
@@ -180,7 +188,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
           <CiTable title={`Above ${SMALL_KWP} kWp`} rows={ci.filter((l) => l.size === 'large')} now={now} />
           <CiTable title={`${SMALL_KWP} kWp and below`} rows={ci.filter((l) => l.size === 'small')} now={now} />
           <CiTable title="No category" rows={ci.filter((l) => l.size === 'none')} now={now} />
-          <p className="muted">Columns follow the normal order; – means that authority is not needed (SELCO skips SEDA, small systems skip CAS, ST and MGTC). ✓ approved · ◐ in progress · ✕ rejected · ○ not started. Red = no update in {STALE_DAYS}+ days. Size comes from the Lark CATEGORY column (kWp if blank). Cases with neither are under No category and show the full route until a category is set.</p>
+          <p className="muted">Each authority has its own slot, so chips line up down the page; a blank slot means not needed (SELCO skips SEDA, small systems skip CAS, ST and MGTC). ✓ approved · ◐ in progress · ✕ rejected · ○ not started. Red = no update in {STALE_DAYS}+ days. Size comes from the Lark CATEGORY column (kWp if blank). Cases with neither are under No category and show the full route until a category is set.</p>
         </section>
       )}
     </>
