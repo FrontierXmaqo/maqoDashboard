@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ATAP_DONE, ATAP_STAGES, AUTHORITIES, NOT_STARTED, STALE_DAYS, isApproved, licenceIssues, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
+import { ATAP_DONE, ATAP_STAGES, NOT_STARTED, SMALL_KWP, STALE_DAYS, isApproved, isSmall, licenceIssues, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
 import type { Tone } from '../../lib/model';
 import type { SalesData } from '../../lib/sales-model';
 import { NotSet, Pill, Seg } from '../ui';
@@ -38,11 +38,9 @@ function Authorities({ l }: { l: Licence }) {
   return (
     <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
       <span className="muted num">{ok}/{l.authorities.length}</span>
-      {AUTHORITIES.map((a) => {
-        const x = l.authorities.find((y) => y.name === a);
-        if (!x) return <span key={a} className="pill t-n" style={{ opacity: 0.55 }} title={`${a}: not needed`}>{a} –</span>;
+      {l.authorities.map((x) => {
         const t = tone(x.status);
-        return <span key={a} className={`pill t-${t}`} title={`${a}: ${x.status || NOT_STARTED}`}>{a} {MARK[t]}<span className="sr"> {x.status || NOT_STARTED}</span></span>;
+        return <span key={x.name} className={`pill t-${t}`} title={`${x.name}: ${x.status || NOT_STARTED}`}>{x.name} {MARK[t]}<span className="sr"> {x.status || NOT_STARTED}</span></span>;
       })}
     </span>
   );
@@ -61,7 +59,32 @@ const Client = ({ l }: { l: Licence }) => (
   </td>
 );
 
-/** Licensing progress for Resi (ATAP steps) and C&I (SEDA, ST, TNB, MGTC). Details live in Lark. */
+/** One C&I size group: a row per client, one chip per authority that case needs. */
+function CiTable({ title, rows, now }: { title: string; rows: Licence[]; now: number }) {
+  return (
+    <>
+      <h3>{title} ({rows.length})</h3>
+      <div className="tbl">
+        <table>
+          <thead><tr><th>Client</th><th>Approved · authorities in order</th><th>Last update</th><th><span className="sr">Lark</span></th></tr></thead>
+          <tbody>
+            {rows.length === 0 && <tr><td colSpan={4} className="empty">No C&I applications.</td></tr>}
+            {rows.map((l) => (
+              <tr key={l.id}>
+                <Client l={l} />
+                <td><Authorities l={l} /></td>
+                <td className="num">{l.done ? <Pill tone="g">All approved</Pill> : l.lastUpdate == null ? <NotSet /> : isStale(l, now) ? <Pill tone="r">{klDate(l.lastUpdate)}</Pill> : klDate(l.lastUpdate)}</td>
+                <td><Open l={l} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+/** Licensing progress for Resi (ATAP steps) and C&I (CAS, SEDA, ST, TNB, MGTC). Details live in Lark. */
 export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
   const [cat, setCat] = useState<Cat>('All');
   const [step, setStep] = useState<string | null>(null);
@@ -138,25 +161,9 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
               return <Kpi key={a.name} v={`${ok}/${counted}`} l={`${a.name} approved`} />;
             })}
           </div>
-          <div className="tbl">
-            <table>
-              <thead><tr><th>Client</th><th>Approved · SEDA · ST · TNB · MGTC</th><th>Last update</th><th><span className="sr">Lark</span></th></tr></thead>
-              <tbody>
-                {ci.length === 0 && <tr><td colSpan={4} className="empty">No C&I applications.</td></tr>}
-                {ci.map((l) => {
-                  return (
-                    <tr key={l.id}>
-                      <Client l={l} />
-                      <td><Authorities l={l} /></td>
-                      <td className="num">{l.done ? <Pill tone="g">All approved</Pill> : l.lastUpdate == null ? <NotSet /> : isStale(l, now) ? <Pill tone="r">{klDate(l.lastUpdate)}</Pill> : klDate(l.lastUpdate)}</td>
-                      <td><Open l={l} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="muted">Authorities run in parallel, so there is no fixed order. ✓ approved · ◐ in progress · ✕ rejected · ○ not started · – not needed. Hover a chip for the exact status. Red = no update in {STALE_DAYS}+ days.</p>
+          <CiTable title={`Above ${SMALL_KWP} kWp`} rows={ci.filter((l) => !isSmall(l))} now={now} />
+          <CiTable title={`${SMALL_KWP} kWp and below`} rows={ci.filter(isSmall)} now={now} />
+          <p className="muted">Chips run left to right in the order each authority is processed; SELCO cases skip SEDA. ✓ approved · ◐ in progress · ✕ rejected · ○ not started. Hover a chip for the exact status. Red = no update in {STALE_DAYS}+ days. Cases with no kWp in Lark are listed under above {SMALL_KWP} kWp.</p>
         </section>
       )}
     </>
