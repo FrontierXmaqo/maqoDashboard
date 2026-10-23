@@ -182,9 +182,10 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
               return <Kpi key={a.name} v={`${ok}/${counted}`} l={`${a.name} approved`} />;
             })}
           </div>
-          <CiTable title={`Above ${SMALL_KWP} kWp`} rows={ci.filter((l) => !l.small)} now={now} />
-          <CiTable title={`${SMALL_KWP} kWp and below`} rows={ci.filter((l) => l.small)} now={now} />
-          <p className="muted">Chips run left to right in the order each authority is processed; SELCO cases skip SEDA. ✓ approved · ◐ in progress · ✕ rejected · ○ not started. Hover a chip for the exact status. Red = no update in {STALE_DAYS}+ days. Size comes from the Lark CATEGORY column (kWp if blank); cases with neither are listed under above {SMALL_KWP} kWp.</p>
+          <CiTable title={`Above ${SMALL_KWP} kWp`} rows={ci.filter((l) => l.size === 'large')} now={now} />
+          <CiTable title={`${SMALL_KWP} kWp and below`} rows={ci.filter((l) => l.size === 'small')} now={now} />
+          <CiTable title="No category" rows={ci.filter((l) => l.size === 'none')} now={now} />
+          <p className="muted">Chips run left to right in the order each authority is processed; SELCO cases skip SEDA. ✓ approved · ◐ in progress · ✕ rejected · ○ not started. Hover a chip for the exact status. Red = no update in {STALE_DAYS}+ days. Size comes from the Lark CATEGORY column (kWp if blank). Cases with neither are under No category and show the full route until a category is set.</p>
         </section>
       )}
     </>

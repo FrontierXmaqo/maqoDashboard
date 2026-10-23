@@ -2,7 +2,7 @@
 // Never throws: a table that can't be read becomes a warning and an empty list.
 
 import { READ_CACHE_SECONDS } from '../../config/app.ts';
-import { ATAP_DONE, LICENSING_BASES, authorityRoute, isApproved, isSelco, isSmall, type Licence, type LicensingCategory } from '../licensing-model.ts';
+import { ATAP_DONE, LICENSING_BASES, authorityRoute, isApproved, isSelco, SMALL_KWP, type Licence, type LicensingCategory } from '../licensing-model.ts';
 import type { SalesData } from '../sales-model.ts';
 import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
 import { cached } from './cache.ts';
@@ -39,7 +39,7 @@ const files = (v: unknown) => {
   return Array.isArray(x) ? x.length : 0;
 };
 
-const EMPTY = { projectId: '', submittedAt: null, licensingPic: [], documentsStatus: '', atapStatus: '', payment: null, declarationLink: '', signedForm: 0, cert: 0, type: '', kwp: null, small: false, authorities: [], chatLink: '', lastUpdate: null };
+const EMPTY = { projectId: '', submittedAt: null, licensingPic: [], documentsStatus: '', atapStatus: '', payment: null, declarationLink: '', signedForm: 0, cert: 0, type: '', kwp: null, size: 'none' as const, authorities: [], chatLink: '', lastUpdate: null };
 
 export function mapResiLicence(rec: LarkRecord): Licence {
   const f = rec.fields ?? {};
@@ -73,8 +73,9 @@ export function mapCiLicence(rec: LarkRecord): Licence {
   const client = display(get(f, 'CLIENT NAME 1', 'CLIENT NAME'));
   const kwp = num(text(get(f, 'KWP')).replace(/,/g, ''));
   const category = single(get(f, 'CATEGORY')) ?? '';
-  const small = category ? category.trim().startsWith('<') : isSmall({ kwp });
-  const authorities = authorityRoute(small, isSelco(client)).filter((a) => a !== 'MGTC' || mgtcNeeded).map((name) => ({
+  const size = category ? (category.trim().startsWith('<') ? 'small' : 'large') : kwp == null ? 'none' : kwp <= SMALL_KWP ? 'small' : 'large';
+  const type = display(get(f, 'TYPE OF APPLICATION'));
+  const authorities = authorityRoute(size === 'small', isSelco(client) || isSelco(type)).filter((a) => a !== 'MGTC' || mgtcNeeded).map((name) => ({
     name,
     // The CAS column in Lark is spelled "CAS WORFLOW".
     status: single(name === 'CAS' ? get(f, 'CAS WORFLOW', 'CAS WORKFLOW', 'CAS STATUS') : get(f, `${name} STATUS`)) ?? '',
@@ -90,9 +91,9 @@ export function mapCiLicence(rec: LarkRecord): Licence {
     remarks: text(get(f, 'Remark apa jadi', 'REMARKS')),
     done: authorities.length > 0 && authorities.every((a) => isApproved(a.status)),
     lastUpdate: dates.length ? Math.max(...dates) : null,
-    type: display(get(f, 'TYPE OF APPLICATION')),
+    type,
     kwp,
-    small,
+    size,
     authorities,
     chatLink: url(get(f, 'Link Whatssapp Group', 'Link Whatsapp Group')),
   };

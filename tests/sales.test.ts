@@ -99,6 +99,8 @@ test('licensing: resi ATAP rows and C&I per-authority rows, summary and stale fl
   assert.equal(mapCiLicence({ record_id: 'c3', fields: { 'CLIENT NAME 1': 'X' } }).authorities.length, 5); // blank MGTC NEEDED counts as needed
   const route = (client: string, kwp: string, category?: string) => mapCiLicence({ record_id: 'r', fields: { 'CLIENT NAME 1': client, KWP: kwp, CATEGORY: category } }).authorities.map((x) => x.name).join('>');
   assert.deepEqual([route('A - SELCO', '500'), route('A', '7.2'), route('A - SELCO', '5')], ['CAS>TNB>ST>MGTC', 'SEDA>TNB', 'TNB']);
+  assert.equal(mapCiLicence({ record_id: 'r', fields: { 'CLIENT NAME 1': 'A' } }).size, 'none');
+  assert.equal(mapCiLicence({ record_id: 'r', fields: { 'CLIENT NAME 1': 'A', 'TYPE OF APPLICATION': 'SELCO', KWP: '5' } }).authorities.length, 1); // SELCO from type column
   assert.equal(route('A', '500', '<72KWP'), 'SEDA>TNB'); // Lark category wins over kWp
   const { statusRank } = await import('../lib/licensing-model.ts');
   assert.deepEqual(['APPROVED', 'REJECTED', 'WAITING FOR VERIFICATION', 'SUBMITTED', ''].sort((x, y) => statusRank(x) - statusRank(y)), ['', 'SUBMITTED', 'WAITING FOR VERIFICATION', 'REJECTED', 'APPROVED']);

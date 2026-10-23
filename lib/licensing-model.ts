@@ -26,7 +26,6 @@ export type Authority = (typeof AUTHORITIES)[number];
 
 /** Systems up to this size follow the Resi route (no CAS, ST or MGTC). */
 export const SMALL_KWP = 7.2;
-export const isSmall = (l: { kwp: number | null }) => l.kwp != null && l.kwp <= SMALL_KWP;
 export const isSelco = (client: string) => /selco/i.test(client);
 
 /** Authorities a C&I case needs, in the order they run. SELCO cases skip SEDA. */
@@ -77,8 +76,8 @@ export type Licence = {
   // C&I. Authorities that don't apply (MGTC not needed) are left out.
   type: string;
   kwp: number | null;
-  /** Lark CATEGORY (<72KWP), or kWp when that is blank. */
-  small: boolean;
+  /** Lark CATEGORY (>72KWP / <72KWP), or kWp when that is blank. 'none' when neither is set. */
+  size: 'large' | 'small' | 'none';
   authorities: { name: Authority; status: string; at: number | null }[];
   chatLink: string;
 };
