@@ -96,17 +96,16 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
   const [step, setStep] = useState<string | null>(null);
   const [hideDone, setHideDone] = useState(false);
   const [q, setQ] = useState('');
+  const [ciQ, setCiQ] = useState('');
   const [rep, setRep] = useState('');
   const now = data.generatedAt;
-  const needle = q.trim().toLowerCase();
-  const match = (l: Licence) => !needle || [l.client, ...l.sales.map((p) => p.name)].some((t) => t.toLowerCase().includes(needle));
-  const reps = [...new Set(data.rows.flatMap((l) => l.sales.map((p) => p.name)))].sort((a, b) => a.localeCompare(b));
-  const byRep = (l: Licence) => !rep || l.sales.some((p) => p.name === rep);
+  const has = (l: Licence, text: string, sales: boolean) => !text.trim() || [l.client, ...(sales ? l.sales.map((p) => p.name) : [])].some((t) => t.toLowerCase().includes(text.trim().toLowerCase()));
   const list = data.rows.filter((l) => cat === 'All' || l.category === cat);
   // Open cases first; least progressed (Resi) or longest without an update (C&I) at the top.
   const resiAll = list.filter((l) => l.category === 'Resi');
-  const resi = resiAll.filter((l) => (!step || l.atapStatus === step) && !(hideDone && l.done) && match(l) && byRep(l)).sort((a, b) => Number(a.done) - Number(b.done) || stageNo(a) - stageNo(b));
-  const ci = list.filter((l) => l.category === 'C&I' && !(hideDone && l.done) && match(l) && byRep(l)).sort((a, b) => Number(a.done) - Number(b.done) || (a.lastUpdate ?? 0) - (b.lastUpdate ?? 0));
+  const reps = [...new Set(resiAll.flatMap((l) => l.sales.map((p) => p.name)))].sort((a, b) => a.localeCompare(b));
+  const resi = resiAll.filter((l) => (!step || l.atapStatus === step) && !(hideDone && l.done) && has(l, q, true) && (!rep || l.sales.some((p) => p.name === rep))).sort((a, b) => Number(a.done) - Number(b.done) || stageNo(a) - stageNo(b));
+  const ci = list.filter((l) => l.category === 'C&I' && !(hideDone && l.done) && has(l, ciQ, false)).sort((a, b) => Number(a.done) - Number(b.done) || (a.lastUpdate ?? 0) - (b.lastUpdate ?? 0));
   const s = licensingSummary(list, now);
   const showResi = cat !== 'C&I';
   const showCi = cat !== 'Resi';
@@ -119,11 +118,6 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Seg<Cat> label="Category" value={cat} onChange={setCat} options={[['All', 'All'], ['Resi', 'Resi'], ['C&I', 'C&I']]} />
-          <input className="inp" style={{ maxWidth: 240 }} type="search" aria-label="Search licensing" placeholder="Search client or sales person" value={q} onChange={(e) => setQ(e.target.value)} />
-          <select className="inp" style={{ maxWidth: 180 }} aria-label="Sales person" value={rep} onChange={(e) => setRep(e.target.value)}>
-            <option value="">All sales</option>
-            {reps.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
           <button type="button" className="btn" aria-pressed={hideDone} onClick={() => setHideDone(!hideDone)}>{hideDone ? 'Show completed' : 'Hide completed'}</button>
           {showResi && <LarkLink href={licensingUrl('Resi')}>Resi in Lark</LarkLink>}
           {showCi && <LarkLink href={licensingUrl('C&I')}>C&I in Lark</LarkLink>}
@@ -141,6 +135,13 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
         <section className="card" aria-labelledby="h-resi">
           <h2 id="h-resi">Resi ATAP progress ({resiAll.length})</h2>
           <p className="muted">Click a step to list only the clients at that step.</p>
+          <div className="row">
+            <input className="inp" style={{ maxWidth: 240 }} type="search" aria-label="Search Resi" placeholder="Search client or sales person" value={q} onChange={(e) => setQ(e.target.value)} />
+            <select className="inp" style={{ maxWidth: 180 }} aria-label="Sales person" value={rep} onChange={(e) => setRep(e.target.value)}>
+              <option value="">All sales</option>
+              {reps.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
           <div className="kpis" role="group" aria-label="Filter by ATAP step" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
             {ATAP_STAGES.map((st, i) => (
               <button key={st} type="button" className={`kpi${step === st ? ' big' : ''}`} aria-pressed={step === st} onClick={() => setStep(step === st ? null : st)}>
@@ -173,6 +174,7 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
       {showCi && (
         <section className="card" aria-labelledby="h-ci">
           <h2 id="h-ci">C&I approvals progress ({ci.length})</h2>
+          <div className="row"><input className="inp" style={{ maxWidth: 240 }} type="search" aria-label="Search C&I" placeholder="Search client" value={ciQ} onChange={(e) => setCiQ(e.target.value)} /></div>
           <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
             {s.authorities.map((a) => {
               const counted = a.statuses.reduce((t, x) => t + x.n, 0);
