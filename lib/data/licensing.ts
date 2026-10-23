@@ -39,7 +39,7 @@ const files = (v: unknown) => {
   return Array.isArray(x) ? x.length : 0;
 };
 
-const EMPTY = { projectId: '', submittedAt: null, licensingPic: [], documentsStatus: '', atapStatus: '', payment: null, declarationLink: '', signedForm: 0, cert: 0, type: '', kwp: null, authorities: [], chatLink: '', lastUpdate: null };
+const EMPTY = { projectId: '', submittedAt: null, licensingPic: [], documentsStatus: '', atapStatus: '', payment: null, declarationLink: '', signedForm: 0, cert: 0, type: '', kwp: null, small: false, authorities: [], chatLink: '', lastUpdate: null };
 
 export function mapResiLicence(rec: LarkRecord): Licence {
   const f = rec.fields ?? {};
@@ -72,7 +72,9 @@ export function mapCiLicence(rec: LarkRecord): Licence {
   const mgtcNeeded = (single(get(f, 'MGTC NEEDED')) ?? '').toUpperCase() !== 'NO';
   const client = display(get(f, 'CLIENT NAME 1', 'CLIENT NAME'));
   const kwp = num(text(get(f, 'KWP')).replace(/,/g, ''));
-  const authorities = authorityRoute(isSmall({ kwp }), isSelco(client)).filter((a) => a !== 'MGTC' || mgtcNeeded).map((name) => ({
+  const category = single(get(f, 'CATEGORY')) ?? '';
+  const small = category ? category.trim().startsWith('<') : isSmall({ kwp });
+  const authorities = authorityRoute(small, isSelco(client)).filter((a) => a !== 'MGTC' || mgtcNeeded).map((name) => ({
     name,
     // The CAS column in Lark is spelled "CAS WORFLOW".
     status: single(name === 'CAS' ? get(f, 'CAS WORFLOW', 'CAS WORKFLOW', 'CAS STATUS') : get(f, `${name} STATUS`)) ?? '',
@@ -90,6 +92,7 @@ export function mapCiLicence(rec: LarkRecord): Licence {
     lastUpdate: dates.length ? Math.max(...dates) : null,
     type: display(get(f, 'TYPE OF APPLICATION')),
     kwp,
+    small,
     authorities,
     chatLink: url(get(f, 'Link Whatssapp Group', 'Link Whatsapp Group')),
   };

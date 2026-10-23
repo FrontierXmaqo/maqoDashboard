@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ATAP_DONE, ATAP_STAGES, NOT_STARTED, SMALL_KWP, STALE_DAYS, isApproved, isSmall, licenceIssues, daysSince, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
+import { ATAP_DONE, ATAP_STAGES, NOT_STARTED, SMALL_KWP, STALE_DAYS, isApproved, licenceIssues, daysSince, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
 import type { Tone } from '../../lib/model';
 import type { SalesData } from '../../lib/sales-model';
 import { NotSet, Pill, Seg } from '../ui';
@@ -169,9 +169,9 @@ export default function Licensing({ data }: { data: SalesData<Licence[]> }) {
               return <Kpi key={a.name} v={`${ok}/${counted}`} l={`${a.name} approved`} />;
             })}
           </div>
-          <CiTable title={`Above ${SMALL_KWP} kWp`} rows={ci.filter((l) => !isSmall(l))} now={now} />
-          <CiTable title={`${SMALL_KWP} kWp and below`} rows={ci.filter(isSmall)} now={now} />
-          <p className="muted">Chips run left to right in the order each authority is processed; SELCO cases skip SEDA. ✓ approved · ◐ in progress · ✕ rejected · ○ not started. Hover a chip for the exact status. Red = no update in {STALE_DAYS}+ days. Cases with no kWp in Lark are listed under above {SMALL_KWP} kWp.</p>
+          <CiTable title={`Above ${SMALL_KWP} kWp`} rows={ci.filter((l) => !l.small)} now={now} />
+          <CiTable title={`${SMALL_KWP} kWp and below`} rows={ci.filter((l) => l.small)} now={now} />
+          <p className="muted">Chips run left to right in the order each authority is processed; SELCO cases skip SEDA. ✓ approved · ◐ in progress · ✕ rejected · ○ not started. Hover a chip for the exact status. Red = no update in {STALE_DAYS}+ days. Size comes from the Lark CATEGORY column (kWp if blank); cases with neither are listed under above {SMALL_KWP} kWp.</p>
         </section>
       )}
     </>

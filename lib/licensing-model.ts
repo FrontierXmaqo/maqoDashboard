@@ -77,6 +77,8 @@ export type Licence = {
   // C&I. Authorities that don't apply (MGTC not needed) are left out.
   type: string;
   kwp: number | null;
+  /** Lark CATEGORY (<72KWP), or kWp when that is blank. */
+  small: boolean;
   authorities: { name: Authority; status: string; at: number | null }[];
   chatLink: string;
 };
