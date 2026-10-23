@@ -13,12 +13,14 @@ data from Lark Base, runs on Vercel, and opens inside Lark as a web app.
 | Part | State |
 |---|---|
 | Live dashboard (Overview, Departments, Employees, Tasks, Projects, Calendar, Reports, Settings) | On |
-| **CEO-only mode** (no sign-in, everyone sees the CEO view, no editing) | **On** (`CEO_ONLY_MODE` in `config/app.ts`) |
-| Lark sign-in, leader and employee views | Built, switched off by CEO-only mode |
+| CEO-only mode (no sign-in, everyone sees the CEO view, no editing) | Off (`CEO_ONLY_MODE` in `config/app.ts`) |
+| **Lark sign-in, CEO / leader / employee views** (opens inside Lark as a web app) | **On** |
 | Editing tasks (create, assign, status, notes) | Built and mock-tested, switched off. Not yet run against any real Base |
 
-While CEO-only mode is on, **keep Vercel Deployment Protection on** (Project > Settings >
-Deployment Protection). With no Lark sign-in, it is the only lock on the data.
+Lark sign-in is the lock on the data, so **Vercel Deployment Protection must be off for
+Production** (Project > Settings > Deployment Protection): Lark's in-app browser can't get
+past the Vercel login. Keep it on for Preview. If CEO-only mode is ever switched back on,
+turn protection back on too.
 
 ## Environment variables (Vercel > Settings > Environment Variables)
 
@@ -29,7 +31,7 @@ Set values in Vercel only. Never commit them. `.env.example` lists the names.
 | `LARK_APP_ID` | Yes | Lark developer console > your app > Credentials & Basic Info > App ID |
 | `LARK_APP_SECRET` | Yes | Same page, App Secret. Server-only |
 | `LARK_BASE_TOKEN` | Yes | The Base's app token: the part after `/base/` in its URL (`NvYSbmF6aadBCvs0nhllBG5Zg1d`) |
-| `SESSION_SECRET` | When sign-in is on | 32+ random characters, e.g. `openssl rand -base64 48`. Signs the session cookie |
+| `SESSION_SECRET` | Yes | 32+ random characters, e.g. `openssl rand -base64 48`. Signs the session cookie |
 | `FREE_THRESHOLD` | No | Open tasks at or below this = Free. Default 0 (Free = no open tasks, Working = 1–4, Overloaded = 5+) |
 | `LARK_WRITES_ENABLED` | No | `1` turns editing on (only when CEO-only mode is off). Leave empty until writes are approved |
 | `DEV_LOGIN` | No | Preview deployments only: `1` allows `/dev-login` mock sign-in. Never set in Production |
@@ -67,7 +69,7 @@ The app reads the Base as itself, so it needs access like any collaborator:
 
 The app only shows up in that search after at least one Base permission (step 1) is enabled.
 
-### 3. Web app (needed when CEO-only mode is turned off)
+### 3. Web app (opens the dashboard inside Lark)
 
 1. **Features > Web App**: set the desktop and mobile homepage to the Vercel production URL
    (`https://maqodashboard.vercel.app`, or your custom domain).

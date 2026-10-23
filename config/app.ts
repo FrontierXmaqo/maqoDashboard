@@ -25,10 +25,9 @@ export function overloadedAt(): number {
 export const CONTACTS_CACHE_SECONDS = 600;
 
 /**
- * CEO-only mode (current setting): no Lark sign-in, everyone who can reach the deployment
- * sees the full CEO view, and editing is off. Leader and employee views, Lark sign-in and
- * editing are built but switched off until this is set to false.
- * Keep Vercel Deployment Protection on while this is true: the deployment itself is the
- * only lock on the data.
+ * CEO-only mode: no Lark sign-in, everyone who can reach the deployment sees the full CEO
+ * view, and editing is off. Off now: the app opens inside Lark and signs people in with
+ * their Lark account (roles in config/roles.ts). If set back to true, turn Vercel
+ * Deployment Protection on again: the deployment itself is then the only lock on the data.
  */
-export const CEO_ONLY_MODE = true;
+export const CEO_ONLY_MODE = false;
