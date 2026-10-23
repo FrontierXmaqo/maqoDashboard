@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ATAP_DONE, ATAP_STAGES, NOT_STARTED, SMALL_KWP, STALE_DAYS, isApproved, isSmall, licenceIssues, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
+import { ATAP_DONE, ATAP_STAGES, NOT_STARTED, SMALL_KWP, STALE_DAYS, isApproved, isSmall, licenceIssues, daysSince, isStale, licenceRecordUrl, licensingSummary, licensingUrl, type Licence, type LicensingCategory } from '../../lib/licensing-model';
 import type { Tone } from '../../lib/model';
 import type { SalesData } from '../../lib/sales-model';
 import { NotSet, Pill, Seg } from '../ui';
@@ -40,7 +40,12 @@ function Authorities({ l }: { l: Licence }) {
       <span className="muted num">{ok}/{l.authorities.length}</span>
       {l.authorities.map((x) => {
         const t = tone(x.status);
-        return <span key={x.name} className={`pill t-${t}`} title={`${x.name}: ${x.status || NOT_STARTED}`}>{x.name} {MARK[t]}<span className="sr"> {x.status || NOT_STARTED}</span></span>;
+        return (
+          <span key={x.name} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <span className={`pill t-${t}`} title={`${x.name}: ${x.status || NOT_STARTED}`}>{x.name} {MARK[t]}<span className="sr"> {x.status || NOT_STARTED}</span></span>
+            <span className="muted num" style={{ fontSize: 11 }}>{x.at == null ? '–' : klDate(x.at)}</span>
+          </span>
+        );
       })}
     </span>
   );
@@ -66,14 +71,15 @@ function CiTable({ title, rows, now }: { title: string; rows: Licence[]; now: nu
       <h3>{title} ({rows.length})</h3>
       <div className="tbl">
         <table>
-          <thead><tr><th>Client</th><th>Approved · authorities in order</th><th>Last update</th><th><span className="sr">Lark</span></th></tr></thead>
+          <thead><tr><th>Client</th><th>Approved · authorities in order</th><th>Last update</th><th>Days waiting</th><th><span className="sr">Lark</span></th></tr></thead>
           <tbody>
-            {rows.length === 0 && <tr><td colSpan={4} className="empty">No C&I applications.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={5} className="empty">No C&I applications.</td></tr>}
             {rows.map((l) => (
               <tr key={l.id}>
                 <Client l={l} />
                 <td><Authorities l={l} /></td>
                 <td className="num">{l.done ? <Pill tone="g">All approved</Pill> : l.lastUpdate == null ? <NotSet /> : isStale(l, now) ? <Pill tone="r">{klDate(l.lastUpdate)}</Pill> : klDate(l.lastUpdate)}</td>
+                <td className="num">{l.done ? '–' : l.lastUpdate == null ? <NotSet /> : `${daysSince(l.lastUpdate, now)} d`}</td>
                 <td><Open l={l} /></td>
               </tr>
             ))}
