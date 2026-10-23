@@ -64,6 +64,14 @@ export function mapResiLicence(rec: LarkRecord): Licence {
   };
 }
 
+/** The CAS column is spelled "CAS WORFLOW" in Lark; any other field starting with CAS that is not a date also counts. */
+function casStatus(f: Fields): unknown {
+  const named = get(f, 'CAS WORFLOW', 'CAS WORKFLOW', 'CAS STATUS');
+  if (named !== undefined) return named;
+  const k = Object.keys(f).find((x) => /^\s*cas\b/i.test(x) && !/date/i.test(x) && f[x] != null && f[x] !== '');
+  return k ? f[k] : undefined;
+}
+
 const DATE_FIELD: Record<string, string> = { CAS: 'CAS DATE OF UPDATE', SEDA: 'SEDA DATE OF UPDATE', ST: 'ST DATE OF UPDATE', TNB: 'TNB DATE OF UPDATE', MGTC: 'DATE OF MGTC UPDATE' };
 
 export function mapCiLicence(rec: LarkRecord): Licence {
@@ -77,8 +85,7 @@ export function mapCiLicence(rec: LarkRecord): Licence {
   const type = display(get(f, 'TYPE OF APPLICATION'));
   const authorities = authorityRoute(size === 'small', isSelco(client) || isSelco(type)).filter((a) => a !== 'MGTC' || mgtcNeeded).map((name) => ({
     name,
-    // The CAS column in Lark is spelled "CAS WORFLOW".
-    status: single(name === 'CAS' ? get(f, 'CAS WORFLOW', 'CAS WORKFLOW', 'CAS STATUS') : get(f, `${name} STATUS`)) ?? '',
+    status: single(name === 'CAS' ? casStatus(f) : get(f, `${name} STATUS`)) ?? '',
     at: datetime(get(f, DATE_FIELD[name])),
   }));
   const dates = authorities.map((a) => a.at).filter((d): d is number => d != null);

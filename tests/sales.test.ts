@@ -101,6 +101,7 @@ test('licensing: resi ATAP rows and C&I per-authority rows, summary and stale fl
   assert.deepEqual([route('A - SELCO', '500'), route('A', '7.2'), route('A - SELCO', '5')], ['CAS>TNB>ST>MGTC', 'SEDA>TNB', 'TNB']);
   assert.equal(mapCiLicence({ record_id: 'r', fields: { 'CLIENT NAME 1': 'A' } }).size, 'none');
   assert.equal(mapCiLicence({ record_id: 'r', fields: { 'CLIENT NAME 1': 'A', 'TYPE OF APPLICATION': 'SELCO', KWP: '5' } }).authorities.length, 1); // SELCO from type column
+  assert.equal(mapCiLicence({ record_id: 'r', fields: { 'CLIENT NAME 1': 'A', KWP: '500', 'CAS  Workflow ': 'Done' } }).authorities[0].status, 'Done'); // odd spacing or spelling still found
   assert.equal(route('A', '500', '<72KWP'), 'SEDA>TNB'); // Lark category wins over kWp
   const { statusRank } = await import('../lib/licensing-model.ts');
   assert.deepEqual(['APPROVED', 'REJECTED', 'WAITING FOR VERIFICATION', 'SUBMITTED', ''].sort((x, y) => statusRank(x) - statusRank(y)), ['', 'SUBMITTED', 'WAITING FOR VERIFICATION', 'REJECTED', 'APPROVED']);
