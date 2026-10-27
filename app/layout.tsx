@@ -15,9 +15,13 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
+// Apply the saved theme before first paint so there is no flash. No saved choice follows the OS.
+const THEME_INIT = "try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}";
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={plex.variable}>
+    <html lang="en" className={plex.variable} suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: THEME_INIT }} /></head>
       <body>{children}</body>
     </html>
   );
