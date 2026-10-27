@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useTransition, type ReactNode } from 'react';
+import { useState, useTransition, type ReactNode } from 'react';
 import { useData } from './DataProvider';
 import { Avatar, Icon } from './ui';
 import { LayerView } from './Layer';
@@ -25,6 +25,19 @@ export const PAGES: { href: string; label: string; ic: string; roles?: string[] 
 ];
 
 const timeFmt = new Intl.DateTimeFormat('en-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: 'numeric', minute: '2-digit' });
+
+/** Flips light and dark; the choice is remembered in this browser and applied before paint by the root layout. */
+function ThemeToggle() {
+  const [dark, setDark] = useState<boolean | null>(null);
+  const isDark = () => dark ?? (document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const flip = () => {
+    const next = isDark() ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('theme', next); } catch { /* private mode: the choice just lasts this visit */ }
+    setDark(next === 'dark');
+  };
+  return <button type="button" className="btn sm" onClick={flip} aria-label="Switch between dark and light mode">{dark === null ? 'Dark / Light' : dark ? 'Light mode' : 'Dark mode'}</button>;
+}
 
 export function Shell({ children }: { children: ReactNode }) {
   const { M, snap, toastMsg, me, dev } = useData();
@@ -75,6 +88,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="spread" style={{ justifyContent: 'flex-end' }}>
             {dev && <span className="tag t-r" style={{ marginRight: 'auto' }}>DEV SIGN-IN: {roleLabel}</span>}
             <span className="muted num">Updated {timeFmt.format(snap.generatedAt)}</span>
+            <ThemeToggle />
             <button type="button" className="btn sm" disabled={pending} onClick={() => start(() => router.refresh())}>
               <Icon n="refresh" s={14} />
               {pending ? 'Refreshing…' : 'Refresh'}
