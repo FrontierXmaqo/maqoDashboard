@@ -20,6 +20,18 @@ export const licenceRecordUrl = (c: LicensingCategory, recordId: string) => `${l
 export const ATAP_STAGES = ['Submitted ATAP Application', 'Pending Signed Declaration Form', 'Pending ATAP Application', 'Pending eATAP Payment', 'eATAP Payment Done', 'Pending SEDA Approval', 'ATAP Approved'];
 export const ATAP_DONE = 'ATAP Approved';
 
+/** What each ATAP step is waiting on, shown under the step heading in the grouped view. */
+export const ATAP_STAGE_HINTS: Record<string, string> = {
+  'Submitted ATAP Application': 'Waiting for TNB/SEDA to pick up',
+  'Pending Signed Declaration Form': 'Customer to sign the declaration',
+  'Pending ATAP Application': 'Team to prepare the application',
+  'Pending eATAP Payment': 'Customer to pay the eATAP fee',
+  'eATAP Payment Done': 'Payment received, SEDA next',
+  'Pending SEDA Approval': 'With SEDA for approval',
+  'ATAP Approved': 'Completed — nothing outstanding',
+};
+export const hintFor = (stage: string) => ATAP_STAGE_HINTS[stage] ?? 'Status is blank or not recognised in Lark';
+
 /** C&I authorities with a status field. */
 export const AUTHORITIES = ['CAS', 'SEDA', 'ST', 'TNB', 'MGTC'] as const;
 export type Authority = (typeof AUTHORITIES)[number];
