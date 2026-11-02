@@ -293,3 +293,5 @@ a.dcard:hover{border-color:var(--muted)}
 .tbl.proc td{padding:9px 8px}
 .tbl.proc th{padding:0 8px 8px}
 .tbl.proc .pcell b,.tbl.proc .pcell .cl{max-width:142px}
+/* Empty state spans all columns and must wrap: the nowrap above would push the last columns off-screen. */
+.tbl.proc td.empty{white-space:normal;line-height:1.55;max-width:560px;padding:18px 8px}
