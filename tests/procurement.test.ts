@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { clientResolver, itemFrom, mapDispatch, mapOrder } from '../lib/data/procurement.ts';
-import { afterCutover, emptyData, procurementSince, sinceLabel, snapshotData } from '../lib/procurement.ts';
+import { afterCutover, emptyData, pageCountFor, pageFrom, pageSlice, pageWindow, procurementSince, sinceLabel, snapshotData } from '../lib/procurement.ts';
 import type { LarkRecord } from '../lib/lark/records.ts';
 
 const t = (s: string) => [{ type: 'text', text: s }];
@@ -174,5 +174,63 @@ test('emptyData: a zeroed page that still carries the cutover label', () => {
   assert.equal(d.orders.length, 0);
   assert.equal(d.live, false);
   assert.equal(d.since, '2 Nov 2026');
+  assert.equal(d.page, 1);
+  assert.equal(d.pageCount, 1, 'an empty table is page 1 of 1, never page 1 of 0');
   assert.deepEqual(d.totals, { requests: 0, approved: 0, pastExpected: 0, underReview: 0, deliveredThisMonth: 0 });
+});
+
+// ---------------------------------------------------------------------------
+// Paging the purchase-order table.
+// ---------------------------------------------------------------------------
+
+test('paging: page count never drops below 1', () => {
+  assert.equal(pageCountFor(0), 1);
+  assert.equal(pageCountFor(-5), 1);
+  assert.equal(pageCountFor(1), 1);
+  assert.equal(pageCountFor(20), 1, 'an exact page holds without a spare blank page');
+  assert.equal(pageCountFor(21), 2);
+  assert.equal(pageCountFor(137), 7);
+  assert.equal(pageCountFor(Number.NaN), 1);
+});
+
+test('paging: a bad ?page value lands on page 1 rather than an empty table', () => {
+  assert.equal(pageFrom(undefined, 7), 1);
+  assert.equal(pageFrom('', 7), 1);
+  assert.equal(pageFrom('  ', 7), 1);
+  assert.equal(pageFrom('0', 7), 1);
+  assert.equal(pageFrom('-3', 7), 1);
+  assert.equal(pageFrom('abc', 7), 1);
+  assert.equal(pageFrom('2.5', 7), 1);
+  assert.equal(pageFrom('NaN', 7), 1);
+  assert.equal(pageFrom('Infinity', 7), 1);
+});
+
+test('paging: valid pages pass through, overflow clamps to the last page', () => {
+  assert.equal(pageFrom('1', 7), 1);
+  assert.equal(pageFrom('4', 7), 4);
+  assert.equal(pageFrom('7', 7), 7);
+  assert.equal(pageFrom('99', 7), 7, 'a stale bookmark must not render nothing');
+  assert.equal(pageFrom(['3', '5'], 7), 3, 'repeated query params take the first');
+});
+
+test('paging: slice returns the right rows and does not wrap', () => {
+  const rows = Array.from({ length: 45 }, (_, i) => i + 1);
+  assert.deepEqual(pageSlice(rows, 1).slice(0, 3), [1, 2, 3]);
+  assert.equal(pageSlice(rows, 1).length, 20);
+  assert.deepEqual(pageSlice(rows, 2).slice(0, 3), [21, 22, 23]);
+  assert.equal(pageSlice(rows, 3).length, 5, 'the last page is a short one');
+  assert.deepEqual(pageSlice(rows, 3), [41, 42, 43, 44, 45]);
+  assert.deepEqual(pageSlice(rows, 4), [], 'past the end is empty, not the first page again');
+  assert.equal(pageSlice(rows, 1, 5).length, 5, 'page size is honoured');
+});
+
+test('paging: the page window keeps first, last and the current page', () => {
+  assert.deepEqual(pageWindow(1, 1), [1]);
+  assert.deepEqual(pageWindow(1, 2), [1, 2]);
+  assert.deepEqual(pageWindow(1, 7), [1, 2, '…', 7]);
+  assert.deepEqual(pageWindow(4, 7), [1, '…', 3, 4, 5, '…', 7]);
+  assert.deepEqual(pageWindow(7, 7), [1, '…', 6, 7]);
+  // Neighbours that do not exist must not create a stray ellipsis.
+  assert.deepEqual(pageWindow(2, 3), [1, 2, 3]);
+  assert.deepEqual(pageWindow(1, 3), [1, 2, 3], '3 pages fit whole, so no gap to elide');
 });

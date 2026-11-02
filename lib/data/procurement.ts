@@ -7,7 +7,7 @@ import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
 import { cached } from './cache.ts';
 import { datetime, display, num, single } from './parse.ts';
 import { fixturesEnabled } from './fixtures.ts';
-import { afterCutover, procurementSince, sinceLabel, snapshotData, type DispatchRow, type ProcurementData, type ProcurementOrder } from '../procurement.ts';
+import { afterCutover, pageCountFor, pageFrom, pageSlice, procurementSince, sinceLabel, snapshotData, type DispatchRow, type ProcurementData, type ProcurementOrder } from '../procurement.ts';
 
 /** Base tokens are not secrets — they appear in every shared URL. Env var wins if set. */
 const PROC_BASE = process.env.LARK_PROC_BASE_TOKEN?.trim() || 'IyZFbpJMVaxPeZs6tFElgaTsgxf';
@@ -17,7 +17,6 @@ const ACTIVE_PROJECTS = 'tblFVx8ckPTQN1Ea'; // Active Projects 2026
 const DISPATCH_V2 = 'tbl56pdrKHeZlM85'; // Dispatch Log v2 (proposed)
 const OUTBOUND_DO = 'tblNNc3YSkpVYYJI'; // Outbound DO Log
 
-const TABLE_ROWS = 12;
 const BOARD_CARDS = 3;
 
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -103,7 +102,7 @@ export function mapDispatch(rec: LarkRecord): DispatchRow {
 
 const submittedAt = (rec: LarkRecord) => datetime(rec.fields?.['Submitted at']) ?? 0;
 
-export async function loadProcurement(): Promise<ProcurementData> {
+export async function loadProcurement(rawPage?: string | string[]): Promise<ProcurementData> {
   const sinceMs = procurementSince();
   const since = sinceLabel(sinceMs);
 
@@ -159,8 +158,11 @@ export async function loadProcurement(): Promise<ProcurementData> {
   const approved = all.filter((o) => o.status === 'Approved');
   const underReview = all.filter((o) => o.status === 'Under Review');
 
+  const pageCount = pageCountFor(all.length);
+  const page = pageFrom(rawPage, pageCount);
+
   return {
-    orders: all.slice(0, TABLE_ROWS),
+    orders: pageSlice(all, page),
     board: {
       requested: underReview.slice(0, BOARD_CARDS),
       ordered: approved.slice(0, BOARD_CARDS),
@@ -182,5 +184,7 @@ export async function loadProcurement(): Promise<ProcurementData> {
     warnings: [],
     live: true,
     since,
+    page,
+    pageCount,
   };
 }

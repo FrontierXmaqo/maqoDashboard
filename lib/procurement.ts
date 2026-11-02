@@ -50,7 +50,14 @@ export type ProcurementData = {
   live: boolean;
   /** Cutover label, e.g. "2 Nov 2026". Nothing submitted before this is counted. */
   since: string;
+  /** 1-based page of the purchase-order table, already clamped to a real page. */
+  page: number;
+  /** Number of pages available. Never below 1, so "page 1 of 1" is the empty case. */
+  pageCount: number;
 };
+
+/** Rows per page in the purchase-order table. */
+export const PAGE_SIZE = 20;
 
 /**
  * Cutover date for the dashboard. Requests submitted before this are ignored, so the page only
@@ -79,6 +86,55 @@ export function sinceLabel(ms: number): string {
  */
 export function afterCutover(ms: number | null | undefined, sinceMs: number): boolean {
   return ms != null && Number.isFinite(ms) && ms >= sinceMs;
+}
+
+// ---------------------------------------------------------------------------
+// Paging the purchase-order table. The page lives in the URL (?page=2) so it
+// survives a refresh, works with the back button, and can be shared.
+// ---------------------------------------------------------------------------
+
+/** Total pages for `total` rows. Always at least 1, so an empty table is "page 1 of 1". */
+export function pageCountFor(total: number, size = PAGE_SIZE): number {
+  if (!Number.isFinite(total) || total <= 0) return 1;
+  return Math.max(1, Math.ceil(total / size));
+}
+
+/**
+ * Turn a raw `?page=` value into a real page. Anything unparseable, zero, negative,
+ * fractional or past the end lands on a page that exists — a bad URL must not 404 or
+ * render an empty table.
+ */
+export function pageFrom(raw: string | string[] | undefined, pageCount: number): number {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value == null || value.trim() === '') return 1;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1) return 1;
+  return Math.min(n, Math.max(1, pageCount));
+}
+
+/** The rows belonging to one 1-based page. Out-of-range pages come back empty, not wrapped. */
+export function pageSlice<T>(items: T[], page: number, size = PAGE_SIZE): T[] {
+  const start = (Math.max(1, page) - 1) * size;
+  return items.slice(start, start + size);
+}
+
+/**
+ * Page numbers to render: first, last, and the current page with one neighbour either side,
+ * with '…' standing in for the gaps. Keeps the control a fixed width on long lists.
+ */
+export function pageWindow(page: number, pageCount: number): (number | '…')[] {
+  if (pageCount <= 1) return [1];
+  const keep = new Set([1, pageCount, page - 1, page, page + 1]);
+  const nums = [...keep].filter((n) => n >= 1 && n <= pageCount).sort((a, b) => a - b);
+
+  const out: (number | '…')[] = [];
+  let prev = 0;
+  for (const n of nums) {
+    if (prev && n - prev > 1) out.push('…');
+    out.push(n);
+    prev = n;
+  }
+  return out;
 }
 
 /** Approval status -> the app's tone scale (g/b/a/r/n). */
@@ -133,6 +189,8 @@ export function emptyData(since: string): ProcurementData {
     warnings: [],
     live: false,
     since,
+    page: 1,
+    pageCount: 1,
   };
 }
 
@@ -142,6 +200,9 @@ export function snapshotData(sinceMs: number): ProcurementData {
   if (sinceMs > SNAPSHOT_LATEST_MS) return emptyData(since);
 
   return {
+    // One page, deliberately. The snapshot keeps the Base's real historical totals below so the
+    // KPIs stay representative, but it only holds the latest 12 rows — offering a page 2 that
+    // could never have rows would be a lie. The caption says "latest 12 of N" to explain the gap.
     orders: SNAPSHOT_ORDERS,
     board: {
       requested: SNAPSHOT_ORDERS.filter((o) => o.status === 'Under Review').slice(0, 3),
@@ -152,5 +213,7 @@ export function snapshotData(sinceMs: number): ProcurementData {
     warnings: [],
     live: false,
     since,
+    page: 1,
+    pageCount: 1,
   };
 }

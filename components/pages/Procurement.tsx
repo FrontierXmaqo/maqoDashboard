@@ -1,14 +1,23 @@
 'use client';
 
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Kpi } from './SalesBits';
 import { Pill } from '../ui';
-import { orderTone, recordUrl, type ProcurementData } from '../../lib/procurement';
+import { PAGE_SIZE, orderTone, pageWindow, recordUrl, type ProcurementData } from '../../lib/procurement';
 
 // Data arrives from the server (lib/data/procurement.ts), which reads the Procurement Base
 // and falls back to a labelled snapshot if the read fails. Layout follows Department Views.
 
 export default function Procurement({ data }: { data: ProcurementData }) {
-  const { totals, board, orders } = data;
+  const { totals, board, orders, page, pageCount } = data;
+  const pathname = usePathname();
+
+  // Page 1 keeps a clean URL so the plain /procurement link stays canonical.
+  const pageHref = (p: number) => (p === 1 ? pathname : `${pathname}?page=${p}`);
+
+  const firstRow = totals.requests === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const lastRow = Math.min(page * PAGE_SIZE, totals.requests);
 
   const cols = [
     { label: 'Requested', tone: 'a' as const, count: totals.underReview, cards: board.requested },
@@ -158,10 +167,50 @@ export default function Procurement({ data }: { data: ProcurementData }) {
             </tbody>
           </table>
         </div>
+
+        {pageCount > 1 && (
+          <nav className="pager" aria-label="Purchase order pages">
+            <span className="muted" style={{ fontSize: 12 }}>
+              Showing {firstRow.toLocaleString()}–{lastRow.toLocaleString()} of {totals.requests.toLocaleString()}
+            </span>
+            <span className="pager-nums">
+              {page > 1 ? (
+                <Link className="pbtn" href={pageHref(page - 1)} rel="prev" aria-label="Previous page">
+                  <span aria-hidden="true">‹</span> Prev
+                </Link>
+              ) : (
+                <span className="pbtn dis" aria-hidden="true">
+                  <span aria-hidden="true">‹</span> Prev
+                </span>
+              )}
+
+              {pageWindow(page, pageCount).map((n, i) =>
+                n === '…' ? (
+                  <span key={`gap-${i}`} className="pbtn dis" aria-hidden="true">…</span>
+                ) : n === page ? (
+                  <span key={n} className="pbtn on" aria-current="page">{n}</span>
+                ) : (
+                  <Link key={n} className="pbtn" href={pageHref(n)} aria-label={`Page ${n}`}>{n}</Link>
+                ),
+              )}
+
+              {page < pageCount ? (
+                <Link className="pbtn" href={pageHref(page + 1)} rel="next" aria-label="Next page">
+                  Next <span aria-hidden="true">›</span>
+                </Link>
+              ) : (
+                <span className="pbtn dis" aria-hidden="true">
+                  Next <span aria-hidden="true">›</span>
+                </span>
+              )}
+            </span>
+          </nav>
+        )}
+
         <p className="muted" style={{ fontSize: 12 }}>
           {data.live ? 'Live from the Procurement Base, cached for 60 seconds. ' : 'Saved snapshot — the live Base read did not complete. '}
           Only requests submitted on or after <b>{data.since}</b> are counted; earlier history is excluded.
-          {orders.length > 0 && <> Showing the latest {orders.length} of {totals.requests.toLocaleString()}.</>}{' '}
+          {!data.live && orders.length > 0 && <> This snapshot holds the latest {orders.length} of {totals.requests.toLocaleString()}.</>}{' '}
           Client name comes from Active Projects 2026 and only resolves where the project text matches — the rest show
           a dash.
         </p>
