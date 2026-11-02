@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { clientResolver, itemFrom, mapDispatch, mapOrder } from '../lib/data/procurement.ts';
-import { afterCutover, emptyData, pageCountFor, pageFrom, pageSlice, pageWindow, procurementSince, sinceLabel, snapshotData } from '../lib/procurement.ts';
+import { afterCutover, buildSummary, emptyData, emptySummary, pageCountFor, pageFrom, pageSlice, pageWindow, procurementSince, sinceLabel, snapshotData, type SummaryRow } from '../lib/procurement.ts';
 import type { LarkRecord } from '../lib/lark/records.ts';
 
 const t = (s: string) => [{ type: 'text', text: s }];
@@ -233,4 +233,102 @@ test('paging: the page window keeps first, last and the current page', () => {
   // Neighbours that do not exist must not create a stray ellipsis.
   assert.deepEqual(pageWindow(2, 3), [1, 2, 3]);
   assert.deepEqual(pageWindow(1, 3), [1, 2, 3], '3 pages fit whole, so no gap to elide');
+});
+
+// ---------------------------------------------------------------------------
+// Overview summary: the four figures plus the status split and urgent list.
+// ---------------------------------------------------------------------------
+
+const NOW = Date.parse('2026-11-10T12:00:00+08:00');
+const daysAgo = (n: number) => NOW - n * 86_400_000;
+
+function row(status: string, expectedMs: number | null, id = 'PRQ-1', supplier = 'SUPPLIER A'): SummaryRow {
+  return {
+    expectedMs,
+    order: {
+      id, rid: `rec-${id}`, project: 'RESI BULK', client: null, item: 'Item', supplier,
+      requested: '2 Nov 2026', ordered: null, expected: '—', status, amount: '100.00 MYR',
+    },
+  };
+}
+
+test('summary: counts mirror the four Procurement-page KPIs', () => {
+  const s = buildSummary(
+    [
+      row('Approved', daysAgo(-5), 'A1'), // future expected date: on the way, not late
+      row('Approved', daysAgo(3), 'A2'), // approved and late
+      row('Under Review', null, 'U1'), // no expected date
+      row('Rejected', daysAgo(1), 'R1'),
+      row('Recalled', null, 'N1'),
+    ],
+    4,
+    NOW,
+  );
+  assert.equal(s.onTheWay, 2, 'on the way is every approved request');
+  assert.equal(s.pastExpected, 2, 'A2 and R1 have an expected date in the past');
+  assert.equal(s.waiting, 1);
+  assert.equal(s.deliveredThisMonth, 4);
+  assert.deepEqual(s.split, { approved: 2, underReview: 1, rejected: 1, recalled: 1 });
+});
+
+test('summary: the split always accounts for every request', () => {
+  const rows = [
+    row('Approved', null, '1'), row('Under Review', null, '2'), row('Rejected', null, '3'),
+    row('Recalled', null, '4'), row('Canceled', null, '5'), row('Terminated', null, '6'),
+  ];
+  const s = buildSummary(rows, 0, NOW);
+  const { approved, underReview, rejected, recalled } = s.split;
+  assert.equal(approved + underReview + rejected + recalled, rows.length);
+  assert.equal(s.split.recalled, 3, 'Canceled and Terminated fold in with Recalled');
+});
+
+test('summary: an unrecognised status is not dropped from the split', () => {
+  const s = buildSummary([row('Pending Something', null, 'X')], 0, NOW);
+  assert.equal(s.split.recalled, 1, 'unknown statuses still have to be counted somewhere');
+});
+
+test('summary: urgent list is most overdue first and capped at three', () => {
+  const s = buildSummary(
+    [
+      row('Approved', daysAgo(1), 'SHORT'),
+      row('Approved', daysAgo(30), 'LONGEST'),
+      row('Approved', daysAgo(7), 'MIDDLE'),
+      row('Approved', daysAgo(2), 'ALSO-SHORT'),
+    ],
+    0,
+    NOW,
+  );
+  assert.deepEqual(s.urgent.map((u) => u.id), ['LONGEST', 'MIDDLE', 'ALSO-SHORT']);
+  assert.equal(s.urgent[0].lateBy, 30);
+  assert.equal(s.urgent[1].lateBy, 7);
+});
+
+test('summary: with nothing late, the newest waiting requests fill the list', () => {
+  const s = buildSummary(
+    [
+      row('Under Review', null, 'NEWEST'),
+      row('Under Review', null, 'SECOND'),
+      row('Under Review', null, 'THIRD'),
+      row('Under Review', null, 'FOURTH'),
+      row('Approved', daysAgo(-3), 'NOT-WAITING'),
+    ],
+    0,
+    NOW,
+  );
+  assert.equal(s.pastExpected, 0);
+  assert.deepEqual(s.urgent.map((u) => u.id), ['NEWEST', 'SECOND', 'THIRD'], 'order of the input is kept');
+  assert.equal(s.urgent[0].lateBy, null, 'not late, so no lateness label');
+});
+
+test('summary: a request due today is not counted as late', () => {
+  const s = buildSummary([row('Approved', NOW, 'TODAY')], 0, NOW);
+  assert.equal(s.pastExpected, 0, 'the boundary is exclusive: due today is still on time');
+  assert.equal(s.onTheWay, 1);
+  assert.deepEqual(s.urgent, [], 'not late, and not waiting either, so there is nothing to rank');
+});
+
+test('summary: empty input gives an all-zero summary', () => {
+  const s = buildSummary([], 0, NOW);
+  assert.deepEqual(s, emptySummary());
+  assert.deepEqual(s.urgent, []);
 });

@@ -303,3 +303,38 @@ a.dcard:hover{border-color:var(--muted)}
 a.pbtn:hover{background:var(--hover);border-color:var(--muted);color:var(--text)}
 .pbtn.on{background:var(--text);border-color:var(--text);color:var(--bg);font-weight:600}
 .pbtn.dis{opacity:.45;pointer-events:none}
+
+/* Procurement summary card on the Overview page. Names are prefixed because .pcard and .bar2
+   already belong to the Projects page and the Licensing card. */
+.proccard{position:relative;--proc-brand:#7A5631;--proc-tint:#F0E9DF}
+:root[data-theme="dark"] .proccard{--proc-brand:#D2A877;--proc-tint:#2E2519}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .proccard{--proc-brand:#D2A877;--proc-tint:#2E2519}}
+.proccard::before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:3px;border-radius:0 3px 3px 0;background:var(--proc-brand)}
+.proccard h2{display:flex;align-items:center;gap:8px}
+.proccard .pdot{width:9px;height:9px;border-radius:3px;background:var(--proc-brand);flex-shrink:0}
+.pstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.pstat{background:var(--surface2);border:1px solid var(--line2);border-radius:11px;padding:11px 13px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.pstat .lab{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pstat b{font-size:21px;font-weight:600;line-height:1.15}
+.pstat .sub{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pstat.act{border-color:var(--a-dot);background:var(--a-bg)}
+.pstat.act .lab,.pstat.act .sub{color:var(--a-fg);opacity:.85}
+.pstat.act b{color:var(--a-fg)}
+.pstat.late{border-color:var(--r-dot);background:var(--r-bg)}
+.pstat.late .lab,.pstat.late .sub{color:var(--r-fg);opacity:.85}
+.pstat.late b{color:var(--r-fg)}
+.pstatus{display:flex;flex-direction:column;gap:7px}
+.psplit{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--line2)}
+.psplit i{display:block;height:100%}
+.purgent{display:flex;flex-direction:column}
+.urow{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.6fr) auto auto;gap:12px;align-items:center;padding:9px 2px;border-top:1px solid var(--line2);text-decoration:none;color:inherit}
+.urow:first-child{border-top:0}
+.urow:hover{background:var(--hover)}
+.urow .rid{font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.urow .sup{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.urow .amt{font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pempty{border:1px dashed var(--line);border-radius:11px;padding:16px;display:flex;align-items:center;gap:14px;background:var(--surface2)}
+.pempty .pic{width:34px;height:34px;border-radius:10px;background:var(--proc-tint);color:var(--proc-brand);display:grid;place-items:center;flex-shrink:0;font-size:16px}
+.pempty b{display:block;font-size:13px}
+.pempty .muted{font-size:12px;line-height:1.5}
+@media (max-width:820px){.pstats{grid-template-columns:repeat(2,minmax(0,1fr))}.urow{grid-template-columns:minmax(0,1fr) auto}}

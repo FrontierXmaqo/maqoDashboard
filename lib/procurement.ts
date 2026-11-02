@@ -41,6 +41,32 @@ export type ProcurementTotals = {
   deliveredThisMonth: number;
 };
 
+/** One row of the Overview card's short list: the longest overdue, or the newest still waiting. */
+export type ProcurementUrgent = {
+  rid: string;
+  id: string;
+  supplier: string;
+  amount: string;
+  status: string;
+  /** Whole days past the expected delivery date. Null when the row is not late. */
+  lateBy: number | null;
+};
+
+/** The shape the Overview page needs. Deliberately mirrors the four Procurement-page KPIs. */
+export type ProcurementSummary = {
+  /** Approved — same as the "Orders on the way" KPI. */
+  onTheWay: number;
+  /** Expected delivery date already passed — same as the "Past expected delivery" KPI. */
+  pastExpected: number;
+  /** Under Review — same as the "Waiting to be ordered" KPI. */
+  waiting: number;
+  deliveredThisMonth: number;
+  /** Status split for the bar. The four numbers sum to the request count. */
+  split: { approved: number; underReview: number; rejected: number; recalled: number };
+  /** At most three rows, most overdue first. */
+  urgent: ProcurementUrgent[];
+};
+
 export type ProcurementData = {
   orders: ProcurementOrder[];
   board: { requested: ProcurementOrder[]; ordered: ProcurementOrder[]; delivered: DispatchRow[] };
@@ -54,6 +80,8 @@ export type ProcurementData = {
   page: number;
   /** Number of pages available. Never below 1, so "page 1 of 1" is the empty case. */
   pageCount: number;
+  /** Condensed figures for the Overview card. */
+  summary: ProcurementSummary;
 };
 
 /** Rows per page in the purchase-order table. */
@@ -137,6 +165,97 @@ export function pageWindow(page: number, pageCount: number): (number | '…')[] 
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Overview summary. Pure so the counting rules can be tested without Lark.
+// ---------------------------------------------------------------------------
+
+const DAY_MS = 86_400_000;
+
+/** A request reduced to what the summary needs. */
+export type SummaryRow = {
+  order: ProcurementOrder;
+  /** "Est. Payment date" in ms, or null when the field is empty. */
+  expectedMs: number | null;
+};
+
+export function emptySummary(): ProcurementSummary {
+  return {
+    onTheWay: 0,
+    pastExpected: 0,
+    waiting: 0,
+    deliveredThisMonth: 0,
+    split: { approved: 0, underReview: 0, rejected: 0, recalled: 0 },
+    urgent: [],
+  };
+}
+
+/**
+ * Build the Overview figures. `rows` must be newest-submitted first, because that order decides
+ * which requests appear in the list when nothing is late yet.
+ */
+export function buildSummary(rows: SummaryRow[], deliveredThisMonth: number, now: number): ProcurementSummary {
+  const split = { approved: 0, underReview: 0, rejected: 0, recalled: 0 };
+  const late: { row: SummaryRow; days: number }[] = [];
+
+  for (const r of rows) {
+    switch (r.order.status) {
+      case 'Approved':
+        split.approved += 1;
+        break;
+      case 'Under Review':
+        split.underReview += 1;
+        break;
+      case 'Rejected':
+        split.rejected += 1;
+        break;
+      case 'Recalled':
+      case 'Canceled':
+      case 'Terminated':
+        split.recalled += 1;
+        break;
+      default:
+        // An unrecognised status still counts toward the request total on the Procurement page,
+        // so it must not vanish from the bar either. Fold it in with the dead ones.
+        split.recalled += 1;
+    }
+    if (r.expectedMs != null && r.expectedMs < now) {
+      late.push({ row: r, days: Math.floor((now - r.expectedMs) / DAY_MS) });
+    }
+  }
+
+  late.sort((a, b) => b.days - a.days);
+  const urgent = late.slice(0, 3).map(({ row, days }) => toUrgent(row, days));
+
+  // Nothing overdue yet: show the newest requests that still need ordering, so the card is
+  // never a set of numbers with nothing to act on.
+  if (!urgent.length) {
+    for (const r of rows) {
+      if (urgent.length === 3) break;
+      if (r.order.status === 'Under Review') urgent.push(toUrgent(r, null));
+    }
+  }
+
+  return {
+    onTheWay: split.approved,
+    pastExpected: late.length,
+    waiting: split.underReview,
+    deliveredThisMonth,
+    split,
+    urgent,
+  };
+}
+
+function toUrgent(row: SummaryRow, lateBy: number | null): ProcurementUrgent {
+  return {
+    rid: row.order.rid,
+    id: row.order.id,
+    supplier: row.order.supplier,
+    amount: row.order.amount,
+    status: row.order.status,
+    lateBy,
+  };
+}
+
 /** Approval status -> the app's tone scale (g/b/a/r/n). */
 export function orderTone(status: string): 'g' | 'b' | 'a' | 'r' | 'n' {
   switch (status) {
@@ -191,6 +310,7 @@ export function emptyData(since: string): ProcurementData {
     since,
     page: 1,
     pageCount: 1,
+    summary: emptySummary(),
   };
 }
 
@@ -215,5 +335,15 @@ export function snapshotData(sinceMs: number): ProcurementData {
     since,
     page: 1,
     pageCount: 1,
+    // Matches the historical totals above rather than the 12 rows held here, and carries no
+    // urgent list: the snapshot has no reliable lateness data to rank.
+    summary: {
+      onTheWay: 731,
+      pastExpected: 843,
+      waiting: 10,
+      deliveredThisMonth: 0,
+      split: { approved: 731, underReview: 10, rejected: 15, recalled: 94 },
+      urgent: [],
+    },
   };
 }

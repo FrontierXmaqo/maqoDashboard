@@ -7,7 +7,7 @@ import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
 import { cached } from './cache.ts';
 import { datetime, display, num, single } from './parse.ts';
 import { fixturesEnabled } from './fixtures.ts';
-import { afterCutover, pageCountFor, pageFrom, pageSlice, procurementSince, sinceLabel, snapshotData, type DispatchRow, type ProcurementData, type ProcurementOrder } from '../procurement.ts';
+import { afterCutover, buildSummary, pageCountFor, pageFrom, pageSlice, procurementSince, sinceLabel, snapshotData, type DispatchRow, type ProcurementData, type ProcurementOrder } from '../procurement.ts';
 
 /** Base tokens are not secrets — they appear in every shared URL. Env var wins if set. */
 const PROC_BASE = process.env.LARK_PROC_BASE_TOKEN?.trim() || 'IyZFbpJMVaxPeZs6tFElgaTsgxf';
@@ -145,11 +145,13 @@ export async function loadProcurement(rawPage?: string | string[]): Promise<Proc
 
   const clientOf = clientResolver(projects);
 
-  // Newest first, by the raw Submitted at timestamp (not the formatted label).
-  const all = sinceRequests
-    .map((rec) => ({ rec, at: submittedAt(rec) }))
-    .sort((a, b) => b.at - a.at)
-    .map(({ rec }) => mapOrder(rec, clientOf));
+  // Newest first, by the raw Submitted at timestamp (not the formatted label). The raw record
+  // rides along because the Overview summary needs "Est. Payment date" as a number.
+  const rows = sinceRequests
+    .map((rec) => ({ rec, at: submittedAt(rec), order: mapOrder(rec, clientOf) }))
+    .sort((a, b) => b.at - a.at);
+
+  const all = rows.map((r) => r.order);
 
   const now = Date.now();
   const thisMonth = monthFmt.format(new Date(now));
@@ -157,6 +159,17 @@ export async function loadProcurement(rawPage?: string | string[]): Promise<Proc
 
   const approved = all.filter((o) => o.status === 'Approved');
   const underReview = all.filter((o) => o.status === 'Under Review');
+
+  const deliveredThisMonth = sinceDispatch.filter((r) => {
+    const d = datetime(r.fields?.['Dispatch Date']) ?? datetime(r.fields?.['Submitted At']);
+    return d != null && monthFmt.format(new Date(d)) === thisMonth;
+  }).length;
+
+  const summary = buildSummary(
+    rows.map((r) => ({ order: r.order, expectedMs: datetime(r.rec.fields?.['Est. Payment date']) })),
+    deliveredThisMonth,
+    now,
+  );
 
   const pageCount = pageCountFor(all.length);
   const page = pageFrom(rawPage, pageCount);
@@ -171,20 +184,15 @@ export async function loadProcurement(rawPage?: string | string[]): Promise<Proc
     totals: {
       requests: sinceRequests.length,
       approved: approved.length,
-      pastExpected: sinceRequests.filter((r) => {
-        const d = datetime(r.fields?.['Est. Payment date']);
-        return d != null && d < now;
-      }).length,
+      pastExpected: summary.pastExpected,
       underReview: underReview.length,
-      deliveredThisMonth: sinceDispatch.filter((r) => {
-        const d = datetime(r.fields?.['Dispatch Date']) ?? datetime(r.fields?.['Submitted At']);
-        return d != null && monthFmt.format(new Date(d)) === thisMonth;
-      }).length,
+      deliveredThisMonth,
     },
     warnings: [],
     live: true,
     since,
     page,
     pageCount,
+    summary,
   };
 }

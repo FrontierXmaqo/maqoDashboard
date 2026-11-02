@@ -12,6 +12,7 @@ import type { Stage } from '../../lib/types';
 import { RESI_MONTHLY_TARGET, yearPace, type SalesSummary } from '../../lib/sales-model';
 import { rmk, kwp } from './SalesBits';
 import { CI_BUCKETS, STALE_DAYS, type LicensingOverview } from '../../lib/licensing-model';
+import { orderTone, recordUrl, type ProcurementData } from '../../lib/procurement';
 
 type Att = { sev: number; tone: Tone; tag: string; title: string; meta: string; ref: ['task' | 'emp', string] };
 
@@ -280,10 +281,10 @@ function ProgressCard({ M, range, from, to }: { M: Model; range: Range; from: st
   );
 }
 
-export default function Overview({ sales, licensing }: { sales: SalesSummary | null; licensing: LicensingOverview | null }) {
+export default function Overview({ sales, licensing, procurement }: { sales: SalesSummary | null; licensing: LicensingOverview | null; procurement: ProcurementData | null }) {
   const { M } = useData();
   if (M.viewer.role === 'employee') return <MyWork />;
-  if (M.viewer.role === 'ceo' && sales) return <CeoOverview sales={sales} licensing={licensing} />;
+  if (M.viewer.role === 'ceo' && sales) return <CeoOverview sales={sales} licensing={licensing} procurement={procurement} />;
   return <TeamOverview />;
 }
 
@@ -305,7 +306,19 @@ function licensingAlerts(L: LicensingOverview | null) {
   return out;
 }
 
-const NOT_CONNECTED = ['Marketing and Procurement (pages ready, waiting for data)', 'Finance', 'HR'];
+function procurementAlerts(P: ProcurementData | null) {
+  if (!P || P.summary.pastExpected === 0) return [];
+  return [
+    {
+      text: `${plural(P.summary.pastExpected, 'payment request')} past the expected delivery date`,
+      href: '/procurement',
+      tag: 'Procurement',
+      tone: 'r' as Tone,
+    },
+  ];
+}
+
+const NOT_CONNECTED = ['Marketing (page ready, waiting for data)', 'Finance', 'HR'];
 
 type EmpRow = { id: string; p: PersonX | SalesSummary['people'][number]['p']; person?: PersonX; dept: string; sales?: SalesSummary['people'][number] };
 
@@ -460,7 +473,113 @@ function LicensingCard({ L }: { L: LicensingOverview }) {
   );
 }
 
-function CeoOverview({ sales, licensing }: { sales: SalesSummary; licensing: LicensingOverview | null }) {
+/**
+ * Procurement summary for the CEO page. Numbers mirror the four KPIs on /procurement, so the two
+ * pages can never disagree. Same cutover window as that page: nothing submitted before `since`.
+ */
+function ProcurementCard({ data }: { data: ProcurementData }) {
+  const { summary, totals, since } = data;
+  const { split } = summary;
+
+  return (
+    <section className="card proccard" aria-labelledby="h-proc">
+      <div className="spread">
+        <div>
+          <h2 id="h-proc"><span className="pdot" aria-hidden="true" />Procurement: what&apos;s on order</h2>
+          <p className="muted" style={{ fontSize: 11, marginTop: 3 }}>Payment requests submitted since {since}</p>
+        </div>
+        <Link className="muted" href="/procurement">Open Procurement page →</Link>
+      </div>
+
+      {totals.requests === 0 ? (
+        <>
+          <div className="pempty">
+            <span className="pic" aria-hidden="true">◷</span>
+            <span>
+              <b>No payment requests since {since}</b>
+              <span className="muted">
+                The dashboard was cut over on {since} and only counts requests from that date onward.
+                Earlier requests are still in the Base — open it in Lark to see them.
+              </span>
+            </span>
+          </div>
+          <p className="muted" style={{ fontSize: 11 }}>
+            Nothing is wrong: the cutover starts the clock here. This card fills in as soon as the first
+            request is submitted.
+          </p>
+        </>
+      ) : (
+        <>
+          <div className="pstats">
+            <div className={`pstat${summary.waiting ? ' act' : ''}`}>
+              <span className="lab">Waiting to be ordered</span>
+              <b className="num">{summary.waiting}</b>
+              <span className="sub">under review</span>
+            </div>
+            <div className={`pstat${summary.pastExpected ? ' late' : ''}`}>
+              <span className="lab">Past expected delivery</span>
+              <b className="num">{summary.pastExpected}</b>
+              <span className="sub">date already passed</span>
+            </div>
+            <div className="pstat">
+              <span className="lab">On the way</span>
+              <b className="num">{summary.onTheWay}</b>
+              <span className="sub">approved</span>
+            </div>
+            <div className="pstat">
+              <span className="lab">Delivered this month</span>
+              <b className="num">{summary.deliveredThisMonth}</b>
+              <span className="sub">from the dispatch log</span>
+            </div>
+          </div>
+
+          <div className="pstatus">
+            <div className="legend">
+              <span><i className="sw" style={{ background: 'var(--g-dot)' }} />Approved {split.approved}</span>
+              <span><i className="sw" style={{ background: 'var(--a-dot)' }} />Under review {split.underReview}</span>
+              <span><i className="sw" style={{ background: 'var(--r-dot)' }} />Rejected {split.rejected}</span>
+              <span><i className="sw" style={{ background: 'var(--n-dot)' }} />Recalled {split.recalled}</span>
+            </div>
+            <div className="psplit" role="img" aria-label={`${split.approved} approved, ${split.underReview} under review, ${split.rejected} rejected, ${split.recalled} recalled`}>
+              {split.approved > 0 && <i style={{ flex: split.approved, background: 'var(--g-dot)' }} />}
+              {split.underReview > 0 && <i style={{ flex: split.underReview, background: 'var(--a-dot)' }} />}
+              {split.rejected > 0 && <i style={{ flex: split.rejected, background: 'var(--r-dot)' }} />}
+              {split.recalled > 0 && <i style={{ flex: split.recalled, background: 'var(--n-dot)' }} />}
+            </div>
+          </div>
+
+          {summary.urgent.length > 0 && (
+            <div className="purgent">
+              {summary.urgent.map((u) => (
+                <a key={u.rid} className="urow" href={recordUrl(u.rid)} target="_blank" rel="noopener noreferrer">
+                  <span className="rid">{u.id}</span>
+                  <span className="sup" title={u.supplier}>{u.supplier}</span>
+                  <span className="amt">{u.amount}</span>
+                  {u.lateBy != null ? (
+                    <span className="pill t-r">
+                      <span className="dot d-r" />
+                      {u.lateBy === 0 ? 'Due today' : `${u.lateBy} ${u.lateBy === 1 ? 'day' : 'days'} late`}
+                    </span>
+                  ) : (
+                    <Pill tone={orderTone(u.status)}>{u.status}</Pill>
+                  )}
+                </a>
+              ))}
+            </div>
+          )}
+
+          <p className="muted" style={{ fontSize: 11 }}>
+            Most urgent first: the longest overdue at the top
+            {summary.pastExpected === 0 ? ', then the newest still waiting to be ordered' : ''}. Amounts stay
+            per currency — the Base holds MYR, USD, CNY and EUR, so they are never added into one total.
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
+function CeoOverview({ sales, licensing, procurement }: { sales: SalesSummary; licensing: LicensingOverview | null; procurement: ProcurementData | null }) {
   const { M } = useData();
   const [showAll, setShowAll] = useState(false);
   const { resi, ci } = sales;
@@ -520,6 +639,8 @@ function CeoOverview({ sales, licensing }: { sales: SalesSummary; licensing: Lic
 
       {licensing && <LicensingCard L={licensing} />}
 
+      {procurement && <ProcurementCard data={procurement} />}
+
       <div className="dgrid">
         {resi ? (
           <DeptCard href="/residential" title="Residential sales" big={rmk(resi.sales.fyRm)} bigL={`${resi.sales.fyLabel}, ${plural(resi.sales.fyCases, 'case')}, ${kwp(resi.sales.fyKwp)}`} subs={[[rmk(resi.sales.monthRm), `this month (target ${rmk(RESI_MONTHLY_TARGET)})`], [resi.ongoing, 'projects ongoing']]} />
@@ -537,7 +658,7 @@ function CeoOverview({ sales, licensing }: { sales: SalesSummary; licensing: Lic
       </div>
       <p className="muted">Not connected to Lark yet: {NOT_CONNECTED.join(', ')}.</p>
 
-      <AttentionCard M={M} extra={[...licensingAlerts(licensing), ...sales.alerts]} tasks={false} />
+      <AttentionCard M={M} extra={[...licensingAlerts(licensing), ...procurementAlerts(procurement), ...sales.alerts]} tasks={false} />
       <EmployeesCard M={M} sales={sales} limit={showAll ? undefined : 10} onShowAll={() => setShowAll(true)} />
     </>
   );
