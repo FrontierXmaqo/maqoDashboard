@@ -634,7 +634,7 @@ function CeoOverview({ sales, licensing, procurement }: { sales: SalesSummary; l
           <span className="muted">Line in each bar = where we should be today</span>
         </div>
         <TargetRow label={`Residential, ${rs?.fyLabel ?? ''}`} href="/residential" pace={rs?.fyPace ?? pace} done={rs?.fyRm ?? 0} target={rs?.fyTarget ?? null} fmt={rmk} missing="No Residential sales data." />
-        <TargetRow label="C&I" href="/ci" pace={pace} done={ci?.closedRm ?? 0} target={ci?.target || null} fmt={rmk} missing="No targets in the C&I Target table." />
+        <TargetRow label={`C&I, ${rs?.fyLabel ?? ''}`} href="/ci" pace={pace} done={ci?.closedRm ?? 0} target={ci?.target || null} fmt={rmk} missing="No C&I sales data." />
       </section>
 
       {licensing && <LicensingCard L={licensing} />}

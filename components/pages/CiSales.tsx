@@ -1,7 +1,7 @@
 'use client';
 
 import { Avatar, Bar } from '../ui';
-import { CI_LARK_URL, type CiTarget, type SalesData } from '../../lib/sales-model';
+import { CI_FY_TARGET, CI_LARK_URL, type CiTarget, type SalesData } from '../../lib/sales-model';
 import { Kpi, LarkLink, SalesWarnings, kwp, rm, rmk } from './SalesBits';
 
 /** C&I performance per sales consultant, straight from the team's Target table in Lark. */
@@ -9,7 +9,7 @@ export default function CiSales({ data }: { data: SalesData<CiTarget[]> }) {
   const rows = data.rows.filter((t) => t.sales[0]).sort((a, b) => b.achievement - a.achievement);
   const sum = (f: (t: CiTarget) => number) => rows.reduce((s, t) => s + f(t), 0);
   const achieved = sum((t) => t.achievement);
-  const target = sum((t) => t.target ?? 0);
+  const target = CI_FY_TARGET;
   const closedKwp = sum((t) => t.closedKwp);
   const maxRm = Math.max(1, ...rows.map((t) => Math.max(t.achievement, t.target ?? 0)));
   const pct = (a: number, b: number) => `${a && b ? Math.max(1, Math.round((a / b) * 100)) : 0}%`;

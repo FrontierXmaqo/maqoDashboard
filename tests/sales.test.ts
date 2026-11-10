@@ -43,13 +43,13 @@ test('overview summary uses the latest year, skips cancelled projects and C&I ro
   const s = salesSummary([r(2026, 5, 'COMPLETED'), r(2026, 9, 'CANCEL BY CLIENT'), r(2025, 7, null)], [], [t(amy, 1000, 100), t([], 5000, 999)], [], Date.UTC(2026, 9, 12));
   assert.equal(s.resi?.kwp, 5);
   assert.equal(s.resi?.projects, 1);
-  assert.deepEqual(s.ci, { closedRm: 100, closedKwp: 0, closedN: 0, target: 1000, hotRm: 40, pipelineRm: 0 });
+  assert.deepEqual(s.ci, { closedRm: 100, closedKwp: 0, closedN: 0, target: 30_000_000, hotRm: 40, pipelineRm: 0 });
   assert.deepEqual(s.alerts.map((x) => x.href), ['/residential', '/ci']); // no resi sales yet, behind pace
   assert.equal(s.people.length, 1);
   assert.equal(s.people[0].dept, 'C&I');
 });
 
-test('residential sales: financial year from September, this month, and RM 1M a month target', () => {
+test('residential sales: financial year from September, this month, and RM 10M a year target', () => {
   const now = Date.UTC(2026, 9, 12); // 12 Oct 2026
   assert.equal(financialYear(now).label, 'FYE 2026/27');
   assert.equal(financialYear(Date.UTC(2026, 7, 31)).label, 'FYE 2025/26');
@@ -58,7 +58,7 @@ test('residential sales: financial year from September, this month, and RM 1M a 
   assert.equal(st.monthRm, 88800);
   assert.equal(st.fyRm, 354276); // Sep + Oct, June is last financial year
   assert.equal(st.fyCases, 2);
-  assert.equal(st.fyTarget, 12_000_000);
+  assert.equal(st.fyTarget, 10_000_000);
   assert.equal(st.byMonth.at(-1)?.rm, 88800);
   assert.equal(st.byPerson[0].kwp, 14);
 });

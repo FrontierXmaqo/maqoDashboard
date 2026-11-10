@@ -13,10 +13,13 @@ export const RESI_SALES_BASE = 'Hp9sbVJg8aHPIZs4U2FlpCMMgpd';
 export const RESI_SALES_LARK_URL = `https://bsgyt70achks.sg.larksuite.com/base/${RESI_SALES_BASE}?table=tblDTh0lmtTgrwH1`;
 
 /**
- * Residential team target, RM per month, as set by the CEO Office. The financial year starts in September.
+ * Company sales targets per financial year (Sep to Aug), as set by the CEO Office. FYE 2026/27: Resi RM 10M, C&I RM 30M.
+ * The C&I total replaces the sum of consultant targets; each consultant's own target still comes from Lark.
  * shortcut: edited in code, move to a target table in Lark when the team wants to change it themselves.
  */
-export const RESI_MONTHLY_TARGET = 1_000_000;
+export const RESI_FY_TARGET = 10_000_000;
+export const CI_FY_TARGET = 30_000_000;
+export const RESI_MONTHLY_TARGET = RESI_FY_TARGET / 12;
 const FY_START_MONTH = 8; // September, 0-based
 
 /** Residential FLOW stages in order; the 2026 table's Stage No. formula numbers them 1 to 11. */
@@ -82,18 +85,16 @@ export function resiSalesStats(list: ResiSale[], now: number): ResiSalesStats {
     fyRm: fy.reduce((a, s) => a + s.price, 0),
     fyKwp: fy.reduce((a, s) => a + (s.kwp ?? 0), 0),
     fyCases: fy.length,
-    fyTarget: RESI_MONTHLY_TARGET * 12,
-    fyPace: Math.min(1, (now - start) / (365.25 * 864e5)),
+    fyTarget: RESI_FY_TARGET,
+    fyPace: yearPace(now),
     byMonth,
     byPerson: [...people.values()].sort((a, b) => b.rm - a.rm),
   };
 }
 
-/** Fraction of the year gone by at `ms` (Malaysia time), for "where should we be today" marks. */
+/** Fraction of the financial year (from 1 Sep, Malaysia time) gone by at `ms`, for "where should we be today" marks. */
 export function yearPace(ms: number): number {
-  const d = new Date(ms + 8 * 3600_000);
-  const y = d.getUTCFullYear();
-  return (d.getTime() - Date.UTC(y, 0, 1)) / (Date.UTC(y + 1, 0, 1) - Date.UTC(y, 0, 1));
+  return Math.min(1, (ms - financialYear(ms).start) / (365.25 * 864e5));
 }
 
 export type ResiProject = {
@@ -179,11 +180,11 @@ export function salesSummary(resi: ResiProject[], resiSales: ResiSale[], targets
   const rl = resi.filter((r) => r.year === ry && !(r.status ?? '').startsWith('CANCEL'));
   const ci = targets.filter((t) => t.sales[0]);
   const sum = (f: (t: CiTarget) => number) => ci.reduce((s, t) => s + f(t), 0);
-  const target = sum((t) => t.target ?? 0);
+  const target = CI_FY_TARGET;
   const closedRm = sum((t) => t.achievement);
   const alerts: SalesSummary['alerts'] = [];
   if (rs.fyRm < rs.fyTarget * rs.fyPace * 0.9) alerts.push({ text: `Residential ${rs.fyLabel}: RM ${(rs.fyRm / 1e6).toFixed(2)}M sold, about RM ${((rs.fyTarget * rs.fyPace) / 1e6).toFixed(2)}M expected by now`, href: '/residential' });
-  if (target) alerts.push({ text: `C&I sales RM ${(closedRm / 1e6).toFixed(2)}M of RM ${(target / 1e6).toFixed(1)}M target (${Math.round((closedRm / target) * 100)}%)`, href: '/ci' });
+  alerts.push({ text: `C&I sales RM ${(closedRm / 1e6).toFixed(2)}M of RM ${(target / 1e6).toFixed(1)}M target (${Math.round((closedRm / target) * 100)}%)`, href: '/ci' });
   return {
     at: now,
     alerts,

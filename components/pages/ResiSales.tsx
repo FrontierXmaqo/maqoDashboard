@@ -30,7 +30,7 @@ export default function ResiSales({ data }: { data: SalesData<{ projects: ResiPr
       <div className="topbar">
         <div>
           <h1 className="title">Residential sales</h1>
-          <p className="muted">Sales live from the Sales Declaration table, projects from PROJECT RESIDENTIAL 2026. Team target RM 1M a month.</p>
+          <p className="muted">Sales live from the Sales Declaration table, projects from PROJECT RESIDENTIAL 2026. Team target RM 10M a year (Sep to Aug), about RM 833k a month.</p>
         </div>
         <div className="row">
           <LarkLink href={RESI_SALES_LARK_URL}>See all sales in Lark</LarkLink>
@@ -60,7 +60,7 @@ export default function ResiSales({ data }: { data: SalesData<{ projects: ResiPr
       <section className="card" aria-labelledby="h-mo">
         <div className="spread">
           <h2 id="h-mo">Monthly sales</h2>
-          <span className="muted">Line = RM 1M monthly target</span>
+          <span className="muted">Line = RM 833k monthly target</span>
         </div>
         <div className="stack" style={{ gap: 8 }}>
           {st.byMonth.map((m) => (
