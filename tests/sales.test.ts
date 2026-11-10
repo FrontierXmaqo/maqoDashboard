@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { closedCounts, mapCiEvents, mapResi, mapResiSale, mapTarget } from '../lib/data/sales.ts';
+import { closedSince, mapCiEvents, mapResi, mapResiSale, mapTarget } from '../lib/data/sales.ts';
 import { financialYear, resiByPerson, resiEvents, resiSalesStats, salesSummary } from '../lib/sales-model.ts';
 
 const amy = [{ id: 'ou_a', name: 'Amy' }];
@@ -63,11 +63,13 @@ test('residential sales: financial year from September, this month, and RM 10M a
   assert.equal(st.byPerson[0].kwp, 14);
 });
 
-test('closed deals are counted per Sales PIC, whatever the status spacing', () => {
-  const c = (status: string, pic = amy) => ({ record_id: String(Math.random()), fields: { 'Client Status': status, 'Sales PIC': pic } });
-  const m = closedCounts([c('Closed Sales'), c('Closed Sales '), c('Hot Lead'), c('Closed Sales', ben)]);
-  assert.equal(m.get('ou_a'), 2);
-  assert.equal(m.get('ou_b'), 1);
+test('C&I closed sales: Closed Sales rows per Sales PIC, closed on or after the financial year start', () => {
+  const sep1 = Date.UTC(2026, 8, 1);
+  const c = (status: string, at: number | null, rm: number, pic = amy) => ({ record_id: String(Math.random()), fields: { 'Client Status': status, 'Sales PIC': pic, 'Closed Date': at, 'Total Project Value': rm, 'System Size (kWp)': 10 } });
+  const { by, undated } = closedSince([c('Closed Sales', sep1, 100), c('Closed Sales ', sep1 + 864e5, 50), c('Closed Sales', sep1 - 1, 999), c('Hot Lead', sep1, 777), c('Closed Sales', null, 888), c('Closed Sales', sep1, 30, ben)], sep1);
+  assert.deepEqual(by.get('ou_a'), { rm: 150, kwp: 20, n: 2 });
+  assert.equal(by.get('ou_b')?.rm, 30);
+  assert.equal(undated, 1);
 });
 
 test('licensing: resi ATAP rows and C&I per-authority rows, summary and stale flag', async () => {

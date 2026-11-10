@@ -1,15 +1,16 @@
 'use client';
 
 import { Avatar, Bar } from '../ui';
-import { CI_FY_TARGET, CI_LARK_URL, type CiTarget, type SalesData } from '../../lib/sales-model';
+import { CI_FY_TARGET, CI_LARK_URL, financialYear, type CiTarget, type SalesData } from '../../lib/sales-model';
 import { Kpi, LarkLink, SalesWarnings, kwp, rm, rmk } from './SalesBits';
 
-/** C&I performance per sales consultant, straight from the team's Target table in Lark. */
+/** C&I performance per sales consultant: targets and pipeline from the Target table, closed sales from SE 2026. */
 export default function CiSales({ data }: { data: SalesData<CiTarget[]> }) {
   const rows = data.rows.filter((t) => t.sales[0]).sort((a, b) => b.achievement - a.achievement);
   const sum = (f: (t: CiTarget) => number) => rows.reduce((s, t) => s + f(t), 0);
   const achieved = sum((t) => t.achievement);
   const target = CI_FY_TARGET;
+  const fy = financialYear(data.generatedAt).label;
   const closedKwp = sum((t) => t.closedKwp);
   const maxRm = Math.max(1, ...rows.map((t) => Math.max(t.achievement, t.target ?? 0)));
   const pct = (a: number, b: number) => `${a && b ? Math.max(1, Math.round((a / b) * 100)) : 0}%`;
@@ -19,7 +20,7 @@ export default function CiSales({ data }: { data: SalesData<CiTarget[]> }) {
       <div className="topbar">
         <div>
           <h1 className="title">C&amp;I sales</h1>
-          <p className="muted">Live from the C&amp;I Target table in Lark.</p>
+          <p className="muted">Live from Lark. Closed sales from SE 2026 with a Closed Date in {fy}, against the RM 30M company target.</p>
         </div>
         <LarkLink href={CI_LARK_URL}>Open Target table in Lark</LarkLink>
       </div>
@@ -34,7 +35,7 @@ export default function CiSales({ data }: { data: SalesData<CiTarget[]> }) {
       ) : (
         <>
           <div className="kpis k5">
-            <Kpi big v={rmk(achieved)} l="Sales achieved" />
+            <Kpi big v={rmk(achieved)} l={`Sales achieved, ${fy}`} />
             <Kpi v={sum((t) => t.closedN)} l="Closed sales (deals)" />
             <Kpi v={pct(achieved, target)} l={`Of target (${rmk(target)})`} />
             <Kpi v={rmk(sum((t) => t.hotRm))} l="Hot lead pipeline" />

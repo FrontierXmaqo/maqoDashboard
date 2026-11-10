@@ -3,7 +3,7 @@
 
 import { READ_CACHE_SECONDS } from '../../config/app.ts';
 import { searchAllRecords, type LarkRecord } from '../lark/records.ts';
-import { CI_BASE, CI_SE_LARK_URL, RESI_BASE, RESI_SALES_BASE, RESI_STAGES, type CiTarget, type SalesEvent, type ResiProject, type ResiSale, type SalesData } from '../sales-model.ts';
+import { CI_BASE, CI_SE_LARK_URL, financialYear, RESI_BASE, RESI_SALES_BASE, RESI_STAGES, type CiTarget, type SalesEvent, type ResiProject, type ResiSale, type SalesData } from '../sales-model.ts';
 import { cached } from './cache.ts';
 import { datetime, display, num, single, users } from './parse.ts';
 import { fixturesEnabled } from './fixtures.ts';
@@ -95,27 +95,48 @@ export async function loadResi(): Promise<SalesData<{ projects: ResiProject[]; s
   return { generatedAt: Date.now(), rows: { projects: projects.map((r) => mapResi(r, 2026)), sales: sales.map(mapResiSale) }, warnings };
 }
 
-/** Closed Sales cases per Sales PIC open_id. SE 2026 is the table the Target lookups sum, so counts match. */
-export function closedCounts(recs: LarkRecord[]): Map<string, number> {
-  const m = new Map<string, number>();
+/**
+ * C&I closed sales per Sales PIC open_id, the way the Target table counts them (Client Status = Closed Sales,
+ * Total Project Value), but only deals with a Closed Date on or after `since`. A Lark automation stamps
+ * Closed Date when the status changes to Closed Sales; closed rows without one are counted in `undated`.
+ */
+export function closedSince(recs: LarkRecord[], since: number) {
+  const by = new Map<string, { rm: number; kwp: number; n: number }>();
+  let undated = 0;
   for (const r of recs) {
     const f = r.fields ?? {};
     if (!(single(f['Client Status']) ?? '').trim().toLowerCase().startsWith('closed')) continue;
+    const at = datetime(f['Closed Date']);
+    if (at == null) undated++;
     const id = users(f['Sales PIC'])[0]?.openId;
-    if (id) m.set(id, (m.get(id) ?? 0) + 1);
+    if (at == null || at < since || !id) continue;
+    const row = by.get(id) ?? { rm: 0, kwp: 0, n: 0 };
+    row.rm += num(f['Total Project Value']) ?? 0;
+    row.kwp += num(f['System Size (kWp)']) ?? 0;
+    row.n++;
+    by.set(id, row);
   }
-  return m;
+  return { by, undated };
 }
 
 export async function loadCi(): Promise<SalesData<CiTarget[]>> {
-  // The Target table holds the C&I team's own per-person totals, so the dashboard shows the same numbers.
+  // Consultants, their own targets and pipeline from the Target table; closed sales this financial year from SE 2026.
   const warnings: string[] = [];
   const [targets, cases] = await Promise.all([
     read(CI_BASE, CI_TARGETS).catch((e) => (warnings.push(`Could not read the C&I "Target" table: ${describe(e)}`), [])),
-    read(CI_BASE, CI_SE).catch((e) => (warnings.push(`Could not count closed deals from "SE 2026": ${describe(e)}`), [])),
+    read(CI_BASE, CI_SE).catch((e) => (warnings.push(`Could not read closed sales from "SE 2026": ${describe(e)}`), [])),
   ]);
-  const closed = closedCounts(cases);
-  return { generatedAt: Date.now(), rows: targets.map(mapTarget).map((t) => ({ ...t, closedN: closed.get(t.sales[0]?.openId ?? '') ?? 0 })), warnings };
+  const { start, label } = financialYear(Date.now());
+  const { by, undated } = closedSince(cases, start);
+  if (undated) warnings.push(`${undated} Closed Sales ${undated === 1 ? 'row has' : 'rows have'} no Closed Date in "SE 2026", so ${undated === 1 ? 'it is' : 'they are'} left out of ${label} sales.`);
+  return {
+    generatedAt: Date.now(),
+    rows: targets.map(mapTarget).map((t) => {
+      const c = by.get(t.sales[0]?.openId ?? '');
+      return { ...t, achievement: c?.rm ?? 0, closedKwp: c?.kwp ?? 0, closedN: c?.n ?? 0 };
+    }),
+    warnings,
+  };
 }
 
 /** C&I first meetings and site visits from SE 2026. Lost deals are left out. */

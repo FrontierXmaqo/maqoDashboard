@@ -120,14 +120,14 @@ export type ResiProject = {
 export type CiTarget = {
   sales: PersonRef[];
   target: number | null;
-  /** Sales Achivement (RM): closed sales. */
+  /** Closed sales (RM) this financial year, from SE 2026. */
   achievement: number;
   closedKwp: number;
   hotRm: number;
   /** Pipeline (exclude Close Case), RM. */
   pipelineRm: number;
   pipelineKwp: number;
-  /** Number of Closed Sales cases in SE 2026, the table the Target lookups read. */
+  /** Closed Sales cases this financial year, from SE 2026. */
   closedN: number;
 };
 
